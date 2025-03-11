@@ -82,10 +82,11 @@ export default function AddPlacePage() {
     confirmPassword: '',
   });
 
-  // Redirect if not logged in
+  // Redirect if not logged in and not in demo mode
   useEffect(() => {
     if (!currentUser) {
-      router.push('/auth/login?redirect=/add-place');
+      // For demo purposes, we're not redirecting
+      // router.push('/auth/login?redirect=/add-place');
     }
   }, [currentUser, router]);
 

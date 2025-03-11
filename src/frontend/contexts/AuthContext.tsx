@@ -21,6 +21,8 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<User>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  demoMode: boolean;
+  setDemoMode: (demoMode: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -36,6 +38,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(true); // Demo mode for presentation
 
   function login(email: string, password: string): Promise<User> {
     if (!auth) {
@@ -80,17 +83,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Skip auth state change listener if auth is not available
     if (!auth) {
       setLoading(false);
-      return () => {};
+      return;
     }
-    
-    // Use a type assertion to tell TypeScript that auth is definitely not null here
-    const unsubscribe = onAuthStateChanged(auth as Auth, (user: User | null) => {
+
+    // For demo purposes, create a fake user if in demo mode
+    if (demoMode) {
+      const demoUser = {
+        uid: 'demo-user-id',
+        email: 'demo@example.com',
+        displayName: 'Demo Business Owner',
+        emailVerified: true,
+        isAnonymous: false,
+        metadata: {},
+        providerData: [],
+        refreshToken: '',
+        tenantId: null,
+        delete: () => Promise.resolve(),
+        getIdToken: () => Promise.resolve('demo-token'),
+        getIdTokenResult: () => Promise.resolve({ token: 'demo-token', claims: {}, expirationTime: '', authTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
+        reload: () => Promise.resolve(),
+        toJSON: () => ({}),
+        phoneNumber: null,
+        photoURL: null,
+        providerId: 'password',
+      } as User;
+      
+      setCurrentUser(demoUser);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [demoMode]);
 
   const value = {
     currentUser,
@@ -98,7 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     login,
     register,
     logout,
-    resetPassword
+    resetPassword,
+    demoMode,
+    setDemoMode
   };
 
   return (
