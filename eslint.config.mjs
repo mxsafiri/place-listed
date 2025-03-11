@@ -1,6 +1,9 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import nextPlugin from "eslint-plugin-next";
+import reactPlugin from "eslint-plugin-react";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -9,15 +12,22 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-const eslintConfig = [
-  {
+// Convert old config format to new flat config format
+export default [
+  ...compat.config({
     extends: [
       "next/core-web-vitals",
-      "next/typescript",
       "eslint:recommended",
       "plugin:@typescript-eslint/recommended",
       "plugin:react/recommended",
     ],
+  }),
+  {
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+      react: reactPlugin,
+      next: nextPlugin,
+    },
     rules: {
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
@@ -30,5 +40,3 @@ const eslintConfig = [
     },
   },
 ];
-
-export default eslintConfig;
