@@ -9,7 +9,8 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   updateProfile,
-  UserCredential
+  UserCredential,
+  Auth
 } from 'firebase/auth';
 import { auth } from '../backend/services/firebase';
 
@@ -82,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return () => {};
     }
     
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+    // Use a type assertion to tell TypeScript that auth is definitely not null here
+    const unsubscribe = onAuthStateChanged(auth as Auth, (user: User | null) => {
       setCurrentUser(user);
       setLoading(false);
     });
