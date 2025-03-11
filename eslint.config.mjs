@@ -1,7 +1,6 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
-import nextPlugin from "eslint-plugin-next";
 import reactPlugin from "eslint-plugin-react";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 
@@ -26,7 +25,6 @@ export default [
     plugins: {
       "@typescript-eslint": tsPlugin,
       react: reactPlugin,
-      next: nextPlugin,
     },
     rules: {
       "react/react-in-jsx-scope": "off",
