@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/frontend/components/ui/Input';
 import { Button } from '@/frontend/components/ui/Button';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { createPlace, uploadPlaceImage, PlaceData } from '@/backend/api/places';
 
 // Define the business categories
 const businessCategories = [
@@ -31,6 +33,7 @@ const STEPS = {
 
 export default function AddPlacePage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const [step, setStep] = useState(STEPS.BUSINESS_INFO);
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -78,6 +81,13 @@ export default function AddPlacePage() {
     password: '',
     confirmPassword: '',
   });
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/auth/login?redirect=/add-place');
+    }
+  }, [currentUser, router]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -142,24 +152,66 @@ export default function AddPlacePage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
     try {
-      // Validate passwords match
-      if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
-        setLoading(false);
+      setLoading(true);
+      
+      // Validate form data
+      if (!formData.name || !formData.category || !formData.address) {
+        alert('Please fill in all required fields');
         return;
       }
       
-      // Here we would typically send the data to the backend
-      // For now, we'll just simulate a delay and redirect
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!currentUser) {
+        alert('You must be logged in to add a business');
+        router.push('/auth/login?redirect=/add-place');
+        return;
+      }
+      
+      // Create a new place
+      const placeData: PlaceData = {
+        name: formData.name,
+        category: formData.category,
+        description: formData.description,
+        tags: formData.tags.split(',').map(tag => tag.trim()),
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country,
+        phone: formData.phone,
+        email: formData.email,
+        website: formData.website,
+        hours: {
+          monday: `${formData.mondayOpen} - ${formData.mondayClose}`,
+          tuesday: `${formData.tuesdayOpen} - ${formData.tuesdayClose}`,
+          wednesday: `${formData.wednesdayOpen} - ${formData.wednesdayClose}`,
+          thursday: `${formData.thursdayOpen} - ${formData.thursdayClose}`,
+          friday: `${formData.fridayOpen} - ${formData.fridayClose}`,
+          saturday: `${formData.saturdayOpen} - ${formData.saturdayClose}`,
+          sunday: `${formData.sundayOpen} - ${formData.sundayClose}`
+        },
+        amenities: [],
+        images: []
+      };
+      
+      // Upload photos to Firebase Storage if there are any
+      let uploadedPhotoUrls: string[] = [];
+      if (formData.photos && formData.photos.length > 0) {
+        uploadedPhotoUrls = await Promise.all(
+          formData.photos.map(photo => uploadPlaceImage(photo, currentUser.uid))
+        );
+        placeData.images = uploadedPhotoUrls;
+      }
+      
+      // Create a new place in Firestore
+      const placeId = await createPlace(placeData, currentUser.uid);
       
       // Redirect to success page or dashboard
-      router.push('/dashboard');
+      router.push(`/dashboard?business=${placeId}`);
     } catch (error) {
       console.error('Error submitting business:', error);
+      alert('There was an error adding your business. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -226,7 +278,7 @@ export default function AddPlacePage() {
                 required
               />
               <p className="text-xs text-black">
-                Need help? Click "Generate with AI" to create a professional description based on your business details.
+                Need help? Click &quot;Generate with AI&quot; to create a professional description based on your business details.
               </p>
             </div>
             

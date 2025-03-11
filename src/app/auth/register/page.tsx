@@ -85,10 +85,10 @@ export default function RegisterPage() {
       // TODO: Store additional business info in Firestore
       
       router.push('/place-dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration error:', error);
       setErrors({
-        form: error.message || 'Registration failed. Please try again.',
+        form: error instanceof Error ? error.message : 'Failed to register. Please try again.',
       });
     } finally {
       setIsLoading(false);

@@ -63,10 +63,10 @@ export default function LoginPage() {
       // Use Firebase authentication
       await login(formData.email, formData.password);
       router.push('/place-dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       setErrors({
-        form: error.message || 'Invalid email or password',
+        form: error instanceof Error ? error.message : 'Failed to log in. Please check your credentials and try again.',
       });
     } finally {
       setIsLoading(false);
