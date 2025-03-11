@@ -9,9 +9,10 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   updateProfile,
-  UserCredential
+  UserCredential,
+  Auth
 } from 'firebase/auth';
-import { auth } from '@/backend/services/firebase';
+import { auth } from '../../backend/services/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -36,12 +37,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  function login(email: string, password: string) {
+  function login(email: string, password: string): Promise<User> {
+    if (!auth) {
+      return Promise.reject(new Error('Authentication service is not available'));
+    }
+    
     return signInWithEmailAndPassword(auth, email, password)
       .then((userCredential: UserCredential) => userCredential.user);
   }
 
-  async function register(email: string, password: string, displayName: string) {
+  async function register(email: string, password: string, displayName: string): Promise<User> {
+    if (!auth) {
+      throw new Error('Authentication service is not available');
+    }
+    
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
@@ -51,16 +60,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user;
   }
 
-  function logout() {
+  function logout(): Promise<void> {
+    if (!auth) {
+      return Promise.reject(new Error('Authentication service is not available'));
+    }
+    
     return signOut(auth);
   }
 
-  function resetPassword(email: string) {
+  function resetPassword(email: string): Promise<void> {
+    if (!auth) {
+      return Promise.reject(new Error('Authentication service is not available'));
+    }
+    
     return sendPasswordResetEmail(auth, email);
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
+    // Skip auth state change listener if auth is not available
+    if (!auth) {
+      setLoading(false);
+      return () => {};
+    }
+    
+    // Use a type assertion to tell TypeScript that auth is definitely not null here
+    const unsubscribe = onAuthStateChanged(auth as Auth, (user: User | null) => {
       setCurrentUser(user);
       setLoading(false);
     });
