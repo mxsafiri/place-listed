@@ -14,8 +14,10 @@ const mockBusinesses = [
     name: "Mediterraneo",
     description: "Hotel and Restaurant with beautiful ocean views",
     category: "Hotel",
+    address: "123 Ocean Drive, Kinondoni",
     location: "Kinondoni TZ",
     rating: 4.8,
+    reviewCount: 24,
     imageUrl: "/images/placeholders/category.jpg",
     isVerified: true,
     tags: ["Hotel", "Restaurant", "Bar"],
@@ -26,8 +28,10 @@ const mockBusinesses = [
     name: "The Zanzibari Hotel",
     description: "Luxury accommodations with stunning views",
     category: "Hotel",
+    address: "45 Beach Road, Zanzibar",
     location: "Zanzibar",
     rating: 4.7,
+    reviewCount: 18,
     imageUrl: "/images/placeholders/category.jpg",
     tags: ["Hotel", "Restaurant"],
   },
@@ -35,10 +39,12 @@ const mockBusinesses = [
     id: "3",
     slug: "mojjo-restaurant",
     name: "Mojjo Restaurant & Gastropub",
-    description: "MUYENGA's Freshest Culinary Experience",
+    description: "MUYENGA&apos;s Freshest Culinary Experience",
     category: "Restaurant",
+    address: "78 Muyenga Hill, Kampala",
     location: "Kampala",
     rating: 4.5,
+    reviewCount: 32,
     imageUrl: "/images/placeholders/category.jpg",
     isVerified: true,
     tags: ["Restaurant", "Bar"],
@@ -49,8 +55,10 @@ const mockBusinesses = [
     name: "Taste Me Desserts and Café",
     description: "Delicious desserts and coffee in a beachside setting",
     category: "Cafe",
-    location: "Coco Beach",
-    rating: 4.6,
+    address: "12 Coastal Road, Dar es Salaam",
+    location: "Dar es Salaam",
+    rating: 4.3,
+    reviewCount: 15,
     imageUrl: "/images/placeholders/category.jpg",
     tags: ["Cafe", "Desserts"],
   },
@@ -60,8 +68,10 @@ const mockBusinesses = [
     name: "Ali Barbour's Cave",
     description: "Seafood Restaurant in a natural cave setting",
     category: "Restaurant",
+    address: "Diani Beach Road, Diani Beach, Kenya",
     location: "Diani Beach, Kenya",
     rating: 4.9,
+    reviewCount: 42,
     imageUrl: "/images/placeholders/category.jpg",
     tags: ["Seafood", "Restaurant"],
   },
@@ -71,8 +81,10 @@ const mockBusinesses = [
     name: "Club Africando",
     description: "From Master Chef Fred Uisso",
     category: "Restaurant",
+    address: "123 Libya Street, Dar es Salaam",
     location: "Dar es Salaam",
     rating: 4.7,
+    reviewCount: 28,
     imageUrl: "/images/placeholders/category.jpg",
     isVerified: true,
     tags: ["Restaurant", "Bar"],
@@ -144,7 +156,8 @@ export default function SearchPage() {
       
       if (location) {
         filteredResults = filteredResults.filter(business => 
-          business.location.toLowerCase().includes(location.toLowerCase())
+          business.location.toLowerCase().includes(location.toLowerCase()) ||
+          business.address.toLowerCase().includes(location.toLowerCase())
         );
       }
       
@@ -175,14 +188,14 @@ export default function SearchPage() {
             {results.length > 0 ? (
               <>
                 {results.length} {results.length === 1 ? 'result' : 'results'} found
-                {query && <span> for "{query}"</span>}
+                {query && <span> for &quot;{query}&quot;</span>}
                 {category && <span> in {category}</span>}
                 {location && <span> near {location}</span>}
               </>
             ) : (
               <>
                 No results found
-                {query && <span> for "{query}"</span>}
+                {query && <span> for &quot;{query}&quot;</span>}
                 {category && <span> in {category}</span>}
                 {location && <span> near {location}</span>}
               </>

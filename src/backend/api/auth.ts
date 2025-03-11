@@ -94,8 +94,31 @@ export const getUserProfile = async (userId: string) => {
   }
 };
 
+// Define interface for user profile data
+export interface UserProfileData {
+  displayName?: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  website?: string;
+  socialLinks?: {
+    facebook?: string;
+    twitter?: string;
+    instagram?: string;
+    linkedin?: string;
+  };
+  settings?: {
+    emailNotifications?: boolean;
+    smsNotifications?: boolean;
+    marketingEmails?: boolean;
+  };
+  [key: string]: any; // For any additional properties
+}
+
 // Update user profile
-export const updateUserProfile = async (userId: string, profileData: any) => {
+export const updateUserProfile = async (userId: string, profileData: UserProfileData) => {
   try {
     const userRef = doc(db, 'users', userId);
     

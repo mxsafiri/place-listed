@@ -135,7 +135,7 @@ const uniquePlaces = [
   }
 ];
 
-function getGradientForCategory(slug) {
+function getGradientForCategory(slug: string) {
   switch (slug) {
     case 'food':
       return 'linear-gradient(135deg, #e51e1e 0%, #841818 100%)'; // Red gradient (primary brand color)

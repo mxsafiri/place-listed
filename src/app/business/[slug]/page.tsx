@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useParams } from 'next/navigation';
 import { Button } from "@/frontend/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/frontend/components/ui/Card";
 import ReviewForm from '@/components/ReviewForm';
@@ -34,7 +34,7 @@ const getBusinessData = (slug: string) => {
       },
       images: ['/images/placeholders/food.jpg', '/images/placeholders/food.jpg', '/images/placeholders/food.jpg'],
       reviews: [
-        { id: 1, user: 'John D.', rating: 5, comment: 'Excellent food and service!', date: '2023-12-15' },
+        { id: 1, user: 'John D.', rating: 5, comment: 'Excellent food &amp; service!', date: '2023-12-15' },
         { id: 2, user: 'Sarah M.', rating: 4, comment: 'Great atmosphere, slightly pricey.', date: '2023-11-30' },
         { id: 3, user: 'Michael K.', rating: 5, comment: 'Best restaurant in Nairobi!', date: '2023-11-20' },
       ],
@@ -114,7 +114,7 @@ const getBusinessData = (slug: string) => {
       },
       images: ['/images/placeholders/category.jpg', '/images/placeholders/category.jpg', '/images/placeholders/category.jpg'],
       reviews: [
-        { id: 1, user: 'Lerato M.', rating: 5, comment: 'Fresh produce and friendly staff!', date: '2023-12-18' },
+        { id: 1, user: 'Lerato M.', rating: 5, comment: 'Fresh produce &amp; friendly staff!', date: '2023-12-18' },
         { id: 2, user: 'David S.', rating: 5, comment: 'Love their organic selection.', date: '2023-12-05' },
         { id: 3, user: 'Thandi N.', rating: 4, comment: 'Great products but a bit expensive.', date: '2023-11-28' },
       ],
@@ -126,9 +126,11 @@ const getBusinessData = (slug: string) => {
   return businesses[slug as keyof typeof businesses] || null;
 };
 
-export default function BusinessPage({ params }: { params: { slug: string } }) {
+export default function BusinessPage() {
+  const params = useParams();
   const searchParams = useSearchParams();
-  const business = getBusinessData(params.slug);
+  const slug = params.slug as string;
+  const business = getBusinessData(slug);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviews, setReviews] = useState(business?.reviews || []);
   const [activeTab, setActiveTab] = useState('details');
@@ -145,7 +147,7 @@ export default function BusinessPage({ params }: { params: { slug: string } }) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-3xl font-bold mb-4">Business Not Found</h1>
-        <p className="mb-8">The business you're looking for doesn't exist or has been removed.</p>
+        <p className="mb-8">The business you&apos;re looking for doesn&apos;t exist or has been removed.</p>
         <Link href="/" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition duration-300">
           Back to Home
         </Link>
@@ -290,7 +292,7 @@ export default function BusinessPage({ params }: { params: { slug: string } }) {
                       
                       {showReviewForm ? (
                         <ReviewForm 
-                          businessId={params.slug}
+                          businessId={slug}
                           onReviewSubmit={(newReview) => {
                             const date = new Date().toISOString().split('T')[0];
                             const reviewWithId = {

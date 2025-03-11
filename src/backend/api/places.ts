@@ -121,8 +121,8 @@ export const getPlacesByOwner = async (userId: string): Promise<PlaceWithOwner[]
     querySnapshot.forEach((doc) => {
       places.push({
         id: doc.id,
-        ...doc.data()
-      } as unknown as PlaceWithOwner);
+        ...doc.data() as PlaceWithOwner
+      });
     });
     
     return places;
