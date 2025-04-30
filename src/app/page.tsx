@@ -184,7 +184,7 @@ export default function Home() {
                 
                 {/* AI Search Input */}
                 <div className="relative mb-10 animate-slide-up">
-                  <div className="flex items-center bg-white rounded-full shadow-xl overflow-hidden">
+                  <form action="/search" method="get" className="flex items-center bg-white rounded-full shadow-xl overflow-hidden">
                     <div className="pl-6">
                       <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -192,15 +192,16 @@ export default function Home() {
                     </div>
                     <input 
                       type="text" 
+                      name="q"
                       placeholder="Ask whatever you want..." 
                       className="w-full py-5 px-4 text-black focus:outline-none focus:ring-0 text-lg"
                     />
-                    <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-5 transition-colors">
+                    <button type="submit" className="bg-red-600 hover:bg-red-700 text-white px-8 py-5 transition-colors">
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </button>
-                  </div>
+                  </form>
                 </div>
                 
                 {/* Prompt Cards */}
