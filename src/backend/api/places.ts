@@ -1,38 +1,50 @@
-// This file simulates Firebase Cloud Functions for place-related operations
-import { db, storage } from '../services/firebase/config';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit 
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// This file provides Supabase functions for place-related operations
+import { supabase, handleSupabaseError } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define proper types for our place data
 export interface PlaceData {
   name: string;
   description: string;
   category: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  phone: string;
-  email: string;
-  website: string;
-  hours: Record<string, string>;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+    }
+  };
+  contact: {
+    phone?: string;
+    email?: string;
+    website?: string;
+    socialMedia?: {
+      facebook?: string;
+      instagram?: string;
+      twitter?: string;
+      linkedin?: string;
+    }
+  } | null;
+  business_hours: {
+    monday?: { open: string; close: string; closed: boolean };
+    tuesday?: { open: string; close: string; closed: boolean };
+    wednesday?: { open: string; close: string; closed: boolean };
+    thursday?: { open: string; close: string; closed: boolean };
+    friday?: { open: string; close: string; closed: boolean };
+    saturday?: { open: string; close: string; closed: boolean };
+    sunday?: { open: string; close: string; closed: boolean };
+  } | null;
   amenities: string[];
   tags: string[];
-  images?: string[];
-  products?: ProductData[];
-  [key: string]: any; // For any additional properties
+  photos?: {
+    main?: string;
+    gallery?: string[];
+    logo?: string;
+  } | null;
 }
 
 export interface ProductData {
@@ -44,54 +56,38 @@ export interface ProductData {
 }
 
 export interface PlaceWithOwner extends PlaceData {
-  ownerId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  status: 'pending' | 'approved' | 'rejected';
-  views: number;
-  ratings: {
-    average: number;
-    count: number;
-  };
+  id?: string;
+  owner_id: string;
   slug: string;
+  status: 'pending' | 'active' | 'rejected' | 'inactive';
+  views?: number | null;
+  average_rating?: number | null;
+  review_count?: number | null;
+  featured?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Upload an image to Firebase Storage and get the URL
+// Upload an image to Supabase Storage and get the URL
 export const uploadPlaceImage = async (file: File, userId: string): Promise<string> => {
   try {
-    const storageRef = ref(storage, `places/${userId}/${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+    
+    const { error: uploadError, data } = await supabase.storage
+      .from('business-images')
+      .upload(filePath, file);
+      
+    if (uploadError) throw handleSupabaseError(uploadError);
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('business-images')
+      .getPublicUrl(filePath);
+      
+    return publicUrl;
   } catch (error) {
     console.error('Error uploading image:', error);
-    throw error;
-  }
-};
-
-// Create a new place
-export const createPlace = async (placeData: PlaceData, userId: string): Promise<string> => {
-  try {
-    const slug = generateSlug(placeData.name);
-    
-    const placeWithOwner: PlaceWithOwner = {
-      ...placeData,
-      ownerId: userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: 'pending', // Places need approval before being public
-      views: 0,
-      ratings: {
-        average: 0,
-        count: 0
-      },
-      slug
-    };
-
-    const docRef = await addDoc(collection(db, 'places'), placeWithOwner);
-    return docRef.id;
-  } catch (error) {
-    console.error('Error creating place:', error);
     throw error;
   }
 };
@@ -106,26 +102,47 @@ const generateSlug = (name: string): string => {
     .trim();
 };
 
+// Create a new place
+export const createPlace = async (placeData: PlaceData, userId: string): Promise<string> => {
+  try {
+    const slug = generateSlug(placeData.name);
+    
+    const placeWithOwner: PlaceWithOwner = {
+      ...placeData,
+      owner_id: userId,
+      status: 'pending', // Places need approval before being public
+      slug,
+      views: 0,
+      average_rating: 0,
+      review_count: 0,
+      featured: false
+    };
+
+    const { data, error } = await supabase
+      .from('businesses')
+      .insert(placeWithOwner)
+      .select()
+      .single();
+      
+    if (error) throw handleSupabaseError(error);
+    return data.id;
+  } catch (error) {
+    console.error('Error creating place:', error);
+    throw error;
+  }
+};
+
 // Get places owned by a specific user
 export const getPlacesByOwner = async (userId: string): Promise<PlaceWithOwner[]> => {
   try {
-    const placesQuery = query(
-      collection(db, 'places'),
-      where('ownerId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(placesQuery);
-    const places: PlaceWithOwner[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      places.push({
-        id: doc.id,
-        ...doc.data() as PlaceWithOwner
-      });
-    });
-    
-    return places;
+    const { data, error } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw handleSupabaseError(error);
+    return data || [];
   } catch (error) {
     console.error('Error getting places by owner:', error);
     throw error;
@@ -136,33 +153,37 @@ export const getPlacesByOwner = async (userId: string): Promise<PlaceWithOwner[]
 export const updatePlace = async (placeId: string, placeData: PlaceData, userId: string): Promise<PlaceWithOwner> => {
   try {
     // First verify ownership
-    const placeRef = doc(db, 'places', placeId);
-    const placeSnap = await getDoc(placeRef);
+    const { data: place, error: fetchError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', placeId)
+      .single();
+      
+    if (fetchError) throw handleSupabaseError(fetchError);
     
-    if (!placeSnap.exists()) {
+    if (!place) {
       throw new Error('Place not found');
     }
     
-    const placeInfo = placeSnap.data();
-    if (placeInfo.ownerId !== userId) {
+    if (place.owner_id !== userId) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
     // Update the place
-    const updatedData: PlaceWithOwner = {
+    const updatedData: Partial<PlaceWithOwner> = {
       ...placeData,
-      updatedAt: new Date(),
-      // Preserve fields that shouldn't be updated by the user
-      ownerId: placeInfo.ownerId,
-      createdAt: placeInfo.createdAt,
-      status: placeInfo.status,
-      views: placeInfo.views,
-      ratings: placeInfo.ratings,
-      slug: placeInfo.slug
+      updated_at: new Date().toISOString()
     };
     
-    await updateDoc(placeRef, updatedData);
-    return { id: placeId, ...updatedData };
+    const { data, error } = await supabase
+      .from('businesses')
+      .update(updatedData)
+      .eq('id', placeId)
+      .select()
+      .single();
+      
+    if (error) throw handleSupabaseError(error);
+    return data;
   } catch (error) {
     console.error('Error updating place:', error);
     throw error;
@@ -173,20 +194,29 @@ export const updatePlace = async (placeId: string, placeData: PlaceData, userId:
 export const deletePlace = async (placeId: string, userId: string): Promise<{ success: boolean, id: string }> => {
   try {
     // First verify ownership
-    const placeRef = doc(db, 'places', placeId);
-    const placeSnap = await getDoc(placeRef);
+    const { data: place, error: fetchError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', placeId)
+      .single();
+      
+    if (fetchError) throw handleSupabaseError(fetchError);
     
-    if (!placeSnap.exists()) {
+    if (!place) {
       throw new Error('Place not found');
     }
     
-    const placeInfo = placeSnap.data();
-    if (placeInfo.ownerId !== userId) {
+    if (place.owner_id !== userId) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
     // Delete the place
-    await deleteDoc(placeRef);
+    const { error } = await supabase
+      .from('businesses')
+      .delete()
+      .eq('id', placeId);
+      
+    if (error) throw handleSupabaseError(error);
     return { success: true, id: placeId };
   } catch (error) {
     console.error('Error deleting place:', error);
@@ -223,15 +253,19 @@ export const getPlaceAnalytics = async (placeId: string, userId: string): Promis
 }> => {
   try {
     // First verify ownership
-    const placeRef = doc(db, 'places', placeId);
-    const placeSnap = await getDoc(placeRef);
+    const { data: place, error: fetchError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', placeId)
+      .single();
+      
+    if (fetchError) throw handleSupabaseError(fetchError);
     
-    if (!placeSnap.exists()) {
+    if (!place) {
       throw new Error('Place not found');
     }
     
-    const placeInfo = placeSnap.data();
-    if (placeInfo.ownerId !== userId) {
+    if (place.owner_id !== userId) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
@@ -240,7 +274,7 @@ export const getPlaceAnalytics = async (placeId: string, userId: string): Promis
     // For now, we'll return mock data
     return {
       views: {
-        total: placeInfo.views || 0,
+        total: place.views || 0,
         weekly: Math.floor(Math.random() * 100),
         monthly: Math.floor(Math.random() * 400)
       },
