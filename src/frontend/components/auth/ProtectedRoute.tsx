@@ -2,27 +2,23 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !currentUser) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/auth/login');
     }
-  }, [currentUser, loading, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
-      </div>
-    );
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
-  if (!currentUser) {
+  if (!user) {
     return null;
   }
 

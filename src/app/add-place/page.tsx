@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/frontend/components/ui/Input';
 import { Button } from '@/frontend/components/ui/Button';
 import Link from 'next/link';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { createPlace, uploadPlaceImage, PlaceData } from '@/backend/api/places';
 
 // Define the business categories
@@ -33,7 +33,7 @@ const STEPS = {
 
 export default function AddPlacePage() {
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
   const [step, setStep] = useState(STEPS.BUSINESS_INFO);
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -51,7 +51,7 @@ export default function AddPlacePage() {
     city: '',
     state: '',
     zipCode: '',
-    country: '',
+    country: 'USA',
     
     // Contact
     phone: '',
@@ -71,142 +71,140 @@ export default function AddPlacePage() {
     fridayClose: '17:00',
     saturdayOpen: '10:00',
     saturdayClose: '15:00',
-    sundayOpen: '',
-    sundayClose: '',
+    sundayOpen: 'Closed',
+    sundayClose: 'Closed',
     
     // Photos
-    photos: [],
-    
-    // Account Info
-    password: '',
-    confirmPassword: '',
+    photos: [] as File[],
+    logoFile: null as File | null,
   });
-
-  // Redirect if not logged in and not in demo mode
+  
+  // Redirect if not logged in
   useEffect(() => {
-    if (!currentUser) {
-      // For demo purposes, we're not redirecting
-      // router.push('/auth/login?redirect=/add-place');
+    if (!user && !loading) {
+      router.push('/auth/login?redirect=/add-place');
     }
-  }, [currentUser, router]);
-
-  // Handle form input changes
+  }, [user, router, loading]);
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      if (e.target.name === 'logoFile') {
+        setFormData(prev => ({ ...prev, logoFile: e.target.files?.[0] || null }));
+      } else {
+        const newPhotos = Array.from(e.target.files);
+        setFormData(prev => ({ 
+          ...prev, 
+          photos: [...prev.photos, ...newPhotos]
+        }));
+      }
+    }
+  };
+  
+  const removePhoto = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      photos: prev.photos.filter((_, i) => i !== index)
     }));
   };
-
-  // Generate AI description
-  const generateAIDescription = async () => {
-    if (!formData.name) {
-      alert('Please enter a business name first');
-      return;
-    }
-    
+  
+  const nextStep = () => {
+    setStep(prev => prev + 1);
+  };
+  
+  const prevStep = () => {
+    setStep(prev => prev - 1);
+  };
+  
+  const generateDescription = async () => {
     setGeneratingDescription(true);
     
     try {
-      const response = await fetch('/api/ai-description', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          businessName: formData.name,
-          category: formData.category,
-          keywords: formData.tags,
-        }),
-      });
+      // In a real app, this would call an AI service
+      // For now, we'll just simulate a delay and return a template
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const data = await response.json();
+      const template = `${formData.name} is a premier ${formData.category.toLowerCase()} located in ${formData.city}, ${formData.state}. We offer exceptional service and quality products to our customers. Visit us today!`;
       
-      if (response.ok && data.description) {
-        setFormData(prev => ({
-          ...prev,
-          description: data.description,
-        }));
-      } else {
-        console.error('Error generating description:', data.error);
-        alert('Failed to generate description. Please try again.');
-      }
+      setFormData(prev => ({ ...prev, description: template }));
     } catch (error) {
-      console.error('Error calling AI description API:', error);
-      alert('An error occurred. Please try again.');
+      console.error('Error generating description:', error);
     } finally {
       setGeneratingDescription(false);
     }
   };
-
-  // Handle next step
-  const handleNext = () => {
-    setStep(prev => prev + 1);
-  };
-
-  // Handle previous step
-  const handleBack = () => {
-    setStep(prev => prev - 1);
-  };
-
-  // Handle form submission
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      alert('You must be logged in to add a business');
+      router.push('/auth/login?redirect=/add-place');
+      return;
+    }
+    
+    setLoading(true);
+    
     try {
-      setLoading(true);
-      
-      // Validate form data
-      if (!formData.name || !formData.category || !formData.address) {
-        alert('Please fill in all required fields');
-        return;
-      }
-      
-      if (!currentUser) {
-        alert('You must be logged in to add a business');
-        router.push('/auth/login?redirect=/add-place');
-        return;
-      }
-      
       // Create a new place
       const placeData: PlaceData = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
         tags: formData.tags.split(',').map(tag => tag.trim()),
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        country: formData.country,
-        phone: formData.phone,
-        email: formData.email,
-        website: formData.website,
-        hours: {
-          monday: `${formData.mondayOpen} - ${formData.mondayClose}`,
-          tuesday: `${formData.tuesdayOpen} - ${formData.tuesdayClose}`,
-          wednesday: `${formData.wednesdayOpen} - ${formData.wednesdayClose}`,
-          thursday: `${formData.thursdayOpen} - ${formData.thursdayClose}`,
-          friday: `${formData.fridayOpen} - ${formData.fridayClose}`,
-          saturday: `${formData.saturdayOpen} - ${formData.saturdayClose}`,
-          sunday: `${formData.sundayOpen} - ${formData.sundayClose}`
+        address: {
+          street: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+        },
+        contact: {
+          phone: formData.phone,
+          email: formData.email,
+          website: formData.website,
+        },
+        business_hours: {
+          monday: { open: formData.mondayOpen, close: formData.mondayClose, closed: formData.mondayOpen === 'Closed' },
+          tuesday: { open: formData.tuesdayOpen, close: formData.tuesdayClose, closed: formData.tuesdayOpen === 'Closed' },
+          wednesday: { open: formData.wednesdayOpen, close: formData.wednesdayClose, closed: formData.wednesdayOpen === 'Closed' },
+          thursday: { open: formData.thursdayOpen, close: formData.thursdayClose, closed: formData.thursdayOpen === 'Closed' },
+          friday: { open: formData.fridayOpen, close: formData.fridayClose, closed: formData.fridayOpen === 'Closed' },
+          saturday: { open: formData.saturdayOpen, close: formData.saturdayClose, closed: formData.saturdayOpen === 'Closed' },
+          sunday: { open: formData.sundayOpen, close: formData.sundayClose, closed: formData.sundayOpen === 'Closed' },
         },
         amenities: [],
-        images: []
+        photos: {
+          gallery: []
+        }
       };
       
-      // Upload photos to Firebase Storage if there are any
-      let uploadedPhotoUrls: string[] = [];
+      // Upload photos to Supabase Storage if there are any
       if (formData.photos && formData.photos.length > 0) {
-        uploadedPhotoUrls = await Promise.all(
-          formData.photos.map(photo => uploadPlaceImage(photo, currentUser.uid))
+        const uploadedPhotoUrls = await Promise.all(
+          formData.photos.map(photo => uploadPlaceImage(photo, user.id))
         );
-        placeData.images = uploadedPhotoUrls;
+        
+        placeData.photos = {
+          gallery: uploadedPhotoUrls
+        };
       }
       
-      // Create a new place in Firestore
-      const placeId = await createPlace(placeData, currentUser.uid);
+      // Upload logo if available
+      if (formData.logoFile) {
+        const logoUrl = await uploadPlaceImage(formData.logoFile, user.id);
+        placeData.photos = {
+          ...placeData.photos,
+          logo: logoUrl
+        };
+      }
+      
+      // Create a new place in Supabase
+      const placeId = await createPlace(placeData, user.id);
       
       // Redirect to success page or dashboard
       router.push(`/dashboard?business=${placeId}`);
@@ -261,7 +259,7 @@ export default function AddPlacePage() {
                 <label htmlFor="description" className="text-sm font-medium text-black">Business Description</label>
                 <button
                   type="button"
-                  onClick={generateAIDescription}
+                  onClick={generateDescription}
                   disabled={generatingDescription}
                   className="text-sm text-red-600 hover:text-red-800 flex items-center"
                 >
@@ -294,7 +292,7 @@ export default function AddPlacePage() {
             />
             
             <div className="flex justify-end">
-              <Button onClick={handleNext} variant="primary">
+              <Button onClick={nextStep} variant="primary">
                 Next: Location
               </Button>
             </div>
@@ -362,10 +360,10 @@ export default function AddPlacePage() {
             </div>
             
             <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
+              <Button onClick={prevStep} variant="outline">
                 Back
               </Button>
-              <Button onClick={handleNext} variant="primary">
+              <Button onClick={nextStep} variant="primary">
                 Next: Contact Information
               </Button>
             </div>
@@ -410,10 +408,10 @@ export default function AddPlacePage() {
             />
             
             <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
+              <Button onClick={prevStep} variant="outline">
                 Back
               </Button>
-              <Button onClick={handleNext} variant="primary">
+              <Button onClick={nextStep} variant="primary">
                 Next: Business Hours
               </Button>
             </div>
@@ -560,10 +558,10 @@ export default function AddPlacePage() {
             </div>
             
             <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
+              <Button onClick={prevStep} variant="outline">
                 Back
               </Button>
-              <Button onClick={handleNext} variant="primary">
+              <Button onClick={nextStep} variant="primary">
                 Next: Photos
               </Button>
             </div>
@@ -584,7 +582,7 @@ export default function AddPlacePage() {
                 <div className="text-sm text-black">
                   <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-red-600 hover:text-red-700 focus-within:outline-none">
                     <span>Upload photos</span>
-                    <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*" />
+                    <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*" onChange={handleFileChange} />
                   </label>
                   <p className="pl-1">or drag and drop</p>
                 </div>
@@ -595,10 +593,10 @@ export default function AddPlacePage() {
             </div>
             
             <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
+              <Button onClick={prevStep} variant="outline">
                 Back
               </Button>
-              <Button onClick={handleNext} variant="primary">
+              <Button onClick={nextStep} variant="primary">
                 Review & Submit
               </Button>
             </div>
@@ -657,42 +655,18 @@ export default function AddPlacePage() {
             </div>
             
             <div className="bg-gray-50 p-6 rounded-lg space-y-4">
-              <h3 className="text-lg font-medium text-black">Create Your Account</h3>
-              <p className="text-black">Set up your account to manage your business listing.</p>
-              
-              <div className="space-y-4">
+              <h3 className="text-lg font-medium text-black">Account Information</h3>
+              <div className="grid grid-cols-1 gap-4 mt-2">
                 <Input
                   label="Email Address"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="your@email.com"
+                  placeholder="Your email address"
                   fullWidth
                   required
                   disabled={!!formData.email} // Disable if already provided in contact info
-                />
-                
-                <Input
-                  label="Password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a secure password"
-                  fullWidth
-                  required
-                />
-                
-                <Input
-                  label="Confirm Password"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  fullWidth
-                  required
                 />
               </div>
             </div>
@@ -704,7 +678,7 @@ export default function AddPlacePage() {
             </div>
             
             <div className="flex justify-between">
-              <Button onClick={handleBack} variant="outline">
+              <Button onClick={prevStep} variant="outline">
                 Back
               </Button>
               <Button onClick={handleSubmit} variant="primary" disabled={loading}>

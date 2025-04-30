@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/frontend/components/ui/Button';
 import { Input } from '@/frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/Card';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
