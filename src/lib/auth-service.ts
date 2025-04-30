@@ -40,13 +40,25 @@ export const authService = {
 
       if (authError) throw handleSupabaseError(authError);
 
-      // Create profile - use the service role client to bypass RLS
+      // Create profile
       if (authData.user) {
         // First sign in to get a valid session
-        await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
+        
+        if (signInError) throw handleSupabaseError(signInError);
+        
+        // Make sure we have a fully active session
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+          throw new Error('Session not ready');
+        }
         
         // Now insert the profile with the authenticated session
         const { error: profileError } = await supabase
