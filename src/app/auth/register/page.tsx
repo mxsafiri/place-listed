@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/frontend/components/ui/Button';
 import { Input } from '@/frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/Card';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { registerBusinessOwner } = useAuth();
   const [formData, setFormData] = useState({
     businessName: '',
-    name: '',
+    displayName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -43,8 +43,8 @@ export default function RegisterPage() {
       newErrors.businessName = 'Business name is required';
     }
     
-    if (!formData.name) {
-      newErrors.name = 'Your name is required';
+    if (!formData.displayName) {
+      newErrors.displayName = 'Your name is required';
     }
     
     if (!formData.email) {
@@ -79,12 +79,15 @@ export default function RegisterPage() {
     setIsLoading(true);
     
     try {
-      // Use Firebase authentication to register
-      await register(formData.email, formData.password, formData.name);
+      // Use Supabase authentication to register a business owner
+      await registerBusinessOwner(
+        formData.email, 
+        formData.password, 
+        formData.displayName,
+        formData.businessName
+      );
       
-      // TODO: Store additional business info in Firestore
-      
-      router.push('/place-dashboard');
+      router.push('/dashboard');
     } catch (error: unknown) {
       console.error('Registration error:', error);
       setErrors({
@@ -99,20 +102,17 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-black">
-          Create your business account
+          Register as a Business Owner
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link href="/auth/login" className="font-medium text-red-600 hover:text-red-700">
-            sign in to your existing account
-          </Link>
+          Create an account to manage your business listing
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center text-black">Register</CardTitle>
+            <CardTitle className="text-center text-black">Sign Up</CardTitle>
           </CardHeader>
           <CardContent>
             {errors.form && (
@@ -120,121 +120,107 @@ export default function RegisterPage() {
                 {errors.form}
               </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Input
                   label="Business Name"
+                  id="businessName"
                   name="businessName"
                   type="text"
+                  autoComplete="organization"
+                  required
                   value={formData.businessName}
                   onChange={handleChange}
                   error={errors.businessName}
-                  fullWidth
-                  required
                 />
               </div>
-              
+
               <div>
                 <Input
                   label="Your Name"
-                  name="name"
+                  id="displayName"
+                  name="displayName"
                   type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  error={errors.name}
-                  fullWidth
+                  autoComplete="name"
                   required
+                  value={formData.displayName}
+                  onChange={handleChange}
+                  error={errors.displayName}
                 />
               </div>
 
               <div>
                 <Input
                   label="Email Address"
+                  id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
+                  required
                   value={formData.email}
                   onChange={handleChange}
                   error={errors.email}
-                  fullWidth
-                  required
                 />
               </div>
 
               <div>
                 <Input
                   label="Password"
+                  id="password"
                   name="password"
                   type="password"
+                  autoComplete="new-password"
+                  required
                   value={formData.password}
                   onChange={handleChange}
                   error={errors.password}
-                  fullWidth
-                  required
                 />
               </div>
-              
+
               <div>
                 <Input
                   label="Confirm Password"
+                  id="confirmPassword"
                   name="confirmPassword"
                   type="password"
+                  autoComplete="new-password"
+                  required
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   error={errors.confirmPassword}
-                  fullWidth
-                  required
                 />
               </div>
 
-              <div>
+              <div className="mt-6">
                 <Button
                   type="submit"
-                  variant="primary"
-                  fullWidth
+                  className="w-full"
+                  loading={isLoading}
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Creating account...' : 'Create account'}
+                  Create Account
                 </Button>
               </div>
+            </form>
 
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">
-                      Or continue with
-                    </span>
-                  </div>
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
                 </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    onClick={() => {
-                      // TODO: Implement Google sign-in
-                      alert('Google sign-in will be implemented');
-                    }}
-                  >
-                    Google
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    onClick={() => {
-                      // TODO: Implement Facebook sign-in
-                      alert('Facebook sign-in will be implemented');
-                    }}
-                  >
-                    Facebook
-                  </Button>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    Already have an account?
+                  </span>
                 </div>
               </div>
-            </form>
+
+              <div className="mt-6 text-center">
+                <Link href="/auth/login" className="font-medium text-red-600 hover:text-red-500">
+                  Sign in
+                </Link>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

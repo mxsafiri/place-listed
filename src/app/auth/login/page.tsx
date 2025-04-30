@@ -2,15 +2,18 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/frontend/components/ui/Button';
 import { Input } from '@/frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/Card';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
+  const { login, demoMode, setDemoMode } = useAuth();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -60,13 +63,31 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // Use Firebase authentication
+      // Use Supabase authentication
       await login(formData.email, formData.password);
-      router.push('/place-dashboard');
+      router.push(redirectPath);
     } catch (error: unknown) {
       console.error('Login error:', error);
       setErrors({
         form: error instanceof Error ? error.message : 'Failed to log in. Please check your credentials and try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Enable demo mode and login with demo credentials
+      setDemoMode(true);
+      await login('demo@example.com', 'demopassword');
+      router.push(redirectPath);
+    } catch (error) {
+      console.error('Demo login error:', error);
+      setErrors({
+        form: 'Failed to log in with demo account. Please try again.',
       });
     } finally {
       setIsLoading(false);
@@ -99,31 +120,46 @@ export default function LoginPage() {
               <div>
                 <Input
                   label="Email Address"
+                  id="email"
                   name="email"
                   type="email"
+                  autoComplete="email"
+                  required
                   value={formData.email}
                   onChange={handleChange}
                   error={errors.email}
-                  fullWidth
-                  required
                 />
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <Input
-                    label="Password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    error={errors.password}
-                    fullWidth
-                    required
+                <Input
+                  label="Password"
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  error={errors.password}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                   />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                    Remember me
+                  </label>
                 </div>
-                <div className="text-right mt-1">
-                  <Link href="/auth/forgot-password" className="text-sm text-red-600 hover:text-red-700">
+
+                <div className="text-sm">
+                  <Link href="/auth/forgot-password" className="font-medium text-red-600 hover:text-red-500">
                     Forgot your password?
                   </Link>
                 </div>
@@ -132,52 +168,48 @@ export default function LoginPage() {
               <div>
                 <Button
                   type="submit"
-                  variant="primary"
-                  fullWidth
+                  className="w-full"
+                  loading={isLoading}
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Signing in...' : 'Sign in'}
+                  Sign in
                 </Button>
               </div>
-
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">
-                      Or continue with
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    onClick={() => {
-                      // TODO: Implement Google sign-in
-                      alert('Google sign-in will be implemented');
-                    }}
-                  >
-                    Google
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    onClick={() => {
-                      // TODO: Implement Facebook sign-in
-                      alert('Facebook sign-in will be implemented');
-                    }}
-                  >
-                    Facebook
-                  </Button>
-                </div>
+              
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleDemoLogin}
+                  disabled={isLoading}
+                >
+                  Try Demo Account
+                </Button>
               </div>
             </form>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    Or
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Don&apos;t have an account?{' '}
+                  <Link href="/auth/register" className="font-medium text-red-600 hover:text-red-500">
+                    Register as a business owner
+                  </Link>
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

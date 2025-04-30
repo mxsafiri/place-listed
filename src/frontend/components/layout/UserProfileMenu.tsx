@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/frontend/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function UserProfileMenu() {
-  const { currentUser, logout } = useAuth();
+  const { user, profile, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -19,7 +19,7 @@ export default function UserProfileMenu() {
     }
   };
 
-  if (!currentUser) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="flex items-center">
         <Link 
@@ -41,10 +41,10 @@ export default function UserProfileMenu() {
         aria-haspopup="true"
       >
         <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
-          {currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U'}
+          {profile?.display_name ? profile.display_name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
         </div>
-        <span className="hidden md:block text-black font-medium">
-          {currentUser.displayName || 'User'}
+        <span className="hidden md:block text-white font-medium">
+          {profile?.display_name || user.email?.split('@')[0] || 'User'}
         </span>
       </button>
 
@@ -54,19 +54,37 @@ export default function UserProfileMenu() {
           onBlur={() => setIsMenuOpen(false)}
         >
           <Link 
-            href="/place-dashboard" 
+            href="/dashboard" 
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             onClick={() => setIsMenuOpen(false)}
           >
             Dashboard
           </Link>
           <Link 
-            href="/place-dashboard/settings" 
+            href="/profile" 
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             onClick={() => setIsMenuOpen(false)}
           >
-            Settings
+            Profile
           </Link>
+          {profile?.role === 'business_owner' && (
+            <>
+              <Link 
+                href="/business/manage" 
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Manage Businesses
+              </Link>
+              <Link 
+                href="/business/create" 
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Add Business
+              </Link>
+            </>
+          )}
           <button
             onClick={() => {
               setIsMenuOpen(false);
