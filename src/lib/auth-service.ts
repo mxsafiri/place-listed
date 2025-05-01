@@ -26,7 +26,10 @@ export const authService = {
     businessName: string
   ): Promise<User | null> {
     try {
-      // Register with Supabase Auth - without redirect URL for now to fix black screen
+      // Get the current URL for redirect
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://place-listed.vercel.app';
+      
+      // Register with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -34,8 +37,8 @@ export const authService = {
           data: {
             display_name: displayName,
             role: 'business_owner'
-          }
-          // Removing emailRedirectTo temporarily to fix black screen
+          },
+          emailRedirectTo: `${appUrl}/auth/callback`
         }
       });
 
@@ -121,8 +124,12 @@ export const authService = {
   // Reset password
   async resetPassword(email: string): Promise<{ success: boolean }> {
     try {
-      // Simple reset password without redirect for now to fix black screen
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      // Get the current URL for redirect
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://place-listed.vercel.app';
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${appUrl}/auth/reset-password`
+      });
       
       if (error) throw handleSupabaseError(error);
       return { success: true };
@@ -186,19 +193,34 @@ export const authService = {
       return data.session;
     } catch (error) {
       console.error('Error getting session:', error);
-      throw error;
+      return null;
     }
   },
   
   // Get current user
   async getCurrentUser() {
     try {
-      const { data, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
       if (error) throw handleSupabaseError(error);
-      return data.user;
+      return user;
     } catch (error) {
       console.error('Error getting current user:', error);
-      throw error;
+      return null;
+    }
+  },
+
+  // Update password
+  async updatePassword(password: string) {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password
+      });
+      
+      if (error) throw handleSupabaseError(error);
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      return { data: null, error };
     }
   }
 };
