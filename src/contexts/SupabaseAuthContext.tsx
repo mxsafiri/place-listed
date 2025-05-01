@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false); // Demo mode for presentation/testing
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   const isAuthenticated = !!user;
 
@@ -52,14 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     if (demoMode) {
-      // Create a fake user for demo mode
+      // Create a fake user for demo mode with proper User type
       const demoUser = {
         id: 'demo-user-id',
         email: 'demo@example.com',
         user_metadata: {
           display_name: 'Demo Business Owner',
           role: 'business_owner'
-        }
+        },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        role: '',
+        confirmed_at: new Date().toISOString()
       } as User;
       
       setUser(demoUser);
@@ -93,14 +100,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     businessName: string
   ) => {
     if (demoMode) {
-      // Create a fake user for demo mode
+      // Create a fake user for demo mode with proper User type
       const demoUser = {
         id: 'demo-user-id',
         email,
         user_metadata: {
           display_name: displayName,
           role: 'business_owner'
-        }
+        },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        role: '',
+        confirmed_at: new Date().toISOString()
       } as User;
       
       setUser(demoUser);
@@ -184,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (demoMode) {
       setIsLoading(false);
+      setAuthInitialized(true);
       return;
     }
     
@@ -199,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error initializing auth:', error);
       } finally {
         setIsLoading(false);
+        setAuthInitialized(true);
       }
     };
     
@@ -237,9 +252,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDemoMode
   };
 
+  // Render a loading indicator while auth is initializing
+  if (!authInitialized) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="w-12 h-12 border-4 rounded-full border-t-transparent border-red-600 animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!isLoading ? children : null}
+      {children}
     </AuthContext.Provider>
   );
 }
