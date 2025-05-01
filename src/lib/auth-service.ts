@@ -92,12 +92,15 @@ export const authService = {
           
           // If profile insertion fails, try a different approach with direct SQL
           // This is a fallback in case RLS policies are causing issues
-          const { error: rawSqlError } = await supabase.rpc('create_profile_for_user', {
-            user_id: authData.user.id,
-            user_email: email,
-            user_display_name: displayName,
-            user_business_name: businessName
-          });
+          const { error: rawSqlError } = await supabase.rpc(
+            'create_profile_for_user' as any,
+            {
+              user_id: authData.user.id,
+              user_email: email,
+              user_display_name: displayName,
+              user_business_name: businessName
+            }
+          );
           
           if (rawSqlError) throw handleSupabaseError(rawSqlError);
         }
