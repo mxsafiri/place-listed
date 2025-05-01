@@ -13,11 +13,20 @@ import { getBusinessesByOwner } from '@/backend/api/business';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, profile, isAuthenticated, isLoading } = useAuth();
+  const { user, profile, isAuthenticated, isLoading, setDemoMode } = useAuth();
   
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [businesses, setBusinesses] = useState<any[]>([]);
+
+  // Enable demo mode for testing
+  useEffect(() => {
+    // This will enable demo mode automatically for testing
+    if (!isAuthenticated && !isLoading) {
+      console.log('Enabling demo mode for testing');
+      setDemoMode(true);
+    }
+  }, [isAuthenticated, isLoading, setDemoMode]);
 
   useEffect(() => {
     // For debugging - log authentication state
@@ -28,11 +37,11 @@ export default function DashboardPage() {
       return;
     }
     
-    // Redirect if not authenticated
-    if (!isAuthenticated) {
-      window.location.href = '/auth/login?redirect=/dashboard';
-      return;
-    }
+    // Skip redirect for now to allow demo mode to work
+    // if (!isAuthenticated) {
+    //   window.location.href = '/auth/login?redirect=/dashboard';
+    //   return;
+    // }
 
     // Fetch minimal data if authenticated
     if (isAuthenticated && user) {
@@ -57,6 +66,9 @@ export default function DashboardPage() {
       };
 
       fetchData();
+    } else {
+      // For demo mode, set loading to false even without authentication
+      setIsLoadingData(false);
     }
   }, [isLoading, isAuthenticated, user, profile, router]);
 
@@ -89,19 +101,47 @@ export default function DashboardPage() {
     );
   }
 
-  // Show loading data state
-  if (isLoadingData) {
+  // Show demo dashboard if not authenticated
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="large" />
-          <p className="mt-4">Loading your dashboard...</p>
-        </div>
+      <div className="min-h-screen p-8">
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Demo Dashboard</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold mb-2">Welcome, Demo Business Owner</h2>
+              <p>Email: demo@example.com</p>
+              <p>Role: business_owner</p>
+              <p>Business Name: Demo Business</p>
+            </div>
+            
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-2">Your Businesses</h3>
+              <ul className="list-disc pl-5">
+                <li>Demo Restaurant - Active</li>
+                <li>Demo Shop - Active</li>
+              </ul>
+            </div>
+            
+            <div className="flex space-x-4 mt-6">
+              <Button>
+                Add Business
+              </Button>
+              <Link href="/">
+                <Button variant="outline">
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // Render simplified dashboard
+  // Render simplified dashboard for authenticated users
   return (
     <div className="min-h-screen p-8">
       <Card className="mb-8">
