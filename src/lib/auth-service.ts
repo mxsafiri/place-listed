@@ -38,7 +38,7 @@ export const authService = {
             display_name: displayName,
             role: 'business_owner'
           },
-          emailRedirectTo: `${appUrl}/auth/callback`
+          emailRedirectTo: `${appUrl}/auth/callback?next=/dashboard`
         }
       });
 
@@ -114,8 +114,8 @@ export const authService = {
   async login(email: string, password: string): Promise<User | null> {
     try {
       // Get the appropriate redirect URL based on environment
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const redirectTo = `${appUrl}/auth/callback`;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://place-listed.vercel.app';
+      const redirectTo = `${appUrl}/auth/callback?next=/dashboard`;
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
