@@ -18,10 +18,10 @@ const businessOwnerRoutes = [
   '/business/manage',
 ];
 
-// Hardcode Supabase URL and anon key for Edge runtime
+// Use environment variables with fallback for Edge runtime
 // This is safe since the anon key is meant to be public
-const supabaseUrl = 'https://vqbacnkbnskuawchhdwt.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxYmFjbmtibnNrdWF3Y2hoZHd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4NDI2MzgsImV4cCI6MjA2MTQxODYzOH0.H-_yCZZpm4espAacCzQxWwqh2twayZCgCotdWVqMGqQ';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vqbacnkbnskuawchhdwt.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxYmFjbmtibnNrdWF3Y2hoZHd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4NDI2MzgsImV4cCI6MjA2MTQxODYzOH0.H-_yCZZpm4espAacCzQxWwqh2twayZCgCotdWVqMGqQ';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();

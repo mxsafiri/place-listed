@@ -1,12 +1,12 @@
 'use client';
 
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './database.types';
+import type { Database } from './database.types';
 
-// Initialize the Supabase client with hardcoded values
+// Use environment variables with fallback for client-side
 // This is safe since the anon key is meant to be public
-const supabaseUrl = 'https://vqbacnkbnskuawchhdwt.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxYmFjbmtibnNrdWF3Y2hoZHd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4NDI2MzgsImV4cCI6MjA2MTQxODYzOH0.H-_yCZZpm4espAacCzQxWwqh2twayZCgCotdWVqMGqQ';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vqbacnkbnskuawchhdwt.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxYmFjbmtibnNrdWF3Y2hoZHd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4NDI2MzgsImV4cCI6MjA2MTQxODYzOH0.H-_yCZZpm4espAacCzQxWwqh2twayZCgCotdWVqMGqQ';
 
 // Create a single instance of the Supabase client to be used throughout the app
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
