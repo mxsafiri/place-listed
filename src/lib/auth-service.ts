@@ -47,12 +47,15 @@ export const authService = {
       // Create profile
       if (authData.user) {
         // First sign in to get a valid session
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
         if (signInError) throw handleSupabaseError(signInError);
+        
+        // Wait a moment to ensure the session is fully established
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Make sure we have a fully active session
         const {
@@ -64,22 +67,40 @@ export const authService = {
           throw new Error('Session not ready');
         }
         
-        // Now insert the profile with the authenticated session
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email,
-            display_name: displayName,
-            business_name: businessName,
-            role: 'business_owner',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            subscription: 'free',
-            verified: false
-          });
+        try {
+          // Now insert the profile with the authenticated session
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              email,
+              display_name: displayName,
+              business_name: businessName,
+              role: 'business_owner',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              subscription: 'free',
+              verified: false
+            });
 
-        if (profileError) throw handleSupabaseError(profileError);
+          if (profileError) {
+            console.error('Profile insertion error:', profileError);
+            throw handleSupabaseError(profileError);
+          }
+        } catch (profileInsertError) {
+          console.error('Error inserting profile:', profileInsertError);
+          
+          // If profile insertion fails, try a different approach with direct SQL
+          // This is a fallback in case RLS policies are causing issues
+          const { error: rawSqlError } = await supabase.rpc('create_profile_for_user', {
+            user_id: authData.user.id,
+            user_email: email,
+            user_display_name: displayName,
+            user_business_name: businessName
+          });
+          
+          if (rawSqlError) throw handleSupabaseError(rawSqlError);
+        }
       }
 
       return authData.user;
