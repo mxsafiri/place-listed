@@ -87,13 +87,15 @@ export default function RegisterPage() {
         formData.businessName
       );
       
-      router.push('/dashboard');
+      // Add a small delay to ensure the session is established
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
     } catch (error: unknown) {
       console.error('Registration error:', error);
       setErrors({
         form: error instanceof Error ? error.message : 'Failed to register. Please try again.',
       });
-    } finally {
       setIsLoading(false);
     }
   };

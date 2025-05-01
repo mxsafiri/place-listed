@@ -65,13 +65,16 @@ export default function LoginPage() {
     try {
       // Use Supabase authentication
       await login(formData.email, formData.password);
-      router.push(redirectPath);
+      
+      // Add a small delay to ensure the session is established
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 500);
     } catch (error: unknown) {
       console.error('Login error:', error);
       setErrors({
         form: error instanceof Error ? error.message : 'Failed to log in. Please check your credentials and try again.',
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -83,13 +86,16 @@ export default function LoginPage() {
       // Enable demo mode and login with demo credentials
       setDemoMode(true);
       await login('demo@example.com', 'demopassword');
-      router.push(redirectPath);
+      
+      // Add a small delay to ensure the session is established
+      setTimeout(() => {
+        window.location.href = redirectPath;
+      }, 500);
     } catch (error) {
       console.error('Demo login error:', error);
       setErrors({
         form: 'Failed to log in with demo account. Please try again.',
       });
-    } finally {
       setIsLoading(false);
     }
   };
