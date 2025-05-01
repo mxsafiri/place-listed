@@ -26,6 +26,10 @@ export const authService = {
     businessName: string
   ): Promise<User | null> {
     try {
+      // Get the appropriate redirect URL based on environment
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const redirectTo = `${appUrl}/auth/callback`;
+      
       // Register with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -34,7 +38,8 @@ export const authService = {
           data: {
             display_name: displayName,
             role: 'business_owner'
-          }
+          },
+          emailRedirectTo: redirectTo
         }
       });
 
@@ -88,6 +93,10 @@ export const authService = {
   // Login
   async login(email: string, password: string): Promise<User | null> {
     try {
+      // Get the appropriate redirect URL based on environment
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const redirectTo = `${appUrl}/auth/callback`;
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -116,8 +125,12 @@ export const authService = {
   // Reset password
   async resetPassword(email: string): Promise<{ success: boolean }> {
     try {
+      // Get the appropriate redirect URL based on environment
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const redirectTo = `${appUrl}/auth/reset-password`;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: redirectTo,
       });
       
       if (error) throw handleSupabaseError(error);
