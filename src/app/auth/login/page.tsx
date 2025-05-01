@@ -63,13 +63,15 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      // Use Supabase authentication
-      await login(formData.email, formData.password);
-      
-      // Add a small delay to ensure the session is established
-      setTimeout(() => {
-        window.location.href = redirectPath;
-      }, 500);
+      const user = await login(formData.email, formData.password);
+      if (user) {
+        router.push(redirectPath);
+      } else {
+        setErrors({
+          form: 'Invalid credentials. Please check your email and password and try again.'
+        });
+        setIsLoading(false);
+      }
     } catch (error: unknown) {
       console.error('Login error:', error);
       setErrors({
@@ -85,12 +87,16 @@ export default function LoginPage() {
     try {
       // Enable demo mode and login with demo credentials
       setDemoMode(true);
-      await login('demo@example.com', 'demopassword');
+      const user = await login('demo@example.com', 'demopassword');
       
-      // Add a small delay to ensure the session is established
-      setTimeout(() => {
-        window.location.href = redirectPath;
-      }, 500);
+      if (user) {
+        router.push(redirectPath);
+      } else {
+        setErrors({
+          form: 'Failed to log in with demo account. Please try again.'
+        });
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error('Demo login error:', error);
       setErrors({

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { authService, UserProfile, UserRole } from '@/lib/auth-service';
 
@@ -17,7 +17,6 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
-  // Demo mode for development/testing
   demoMode: boolean;
   setDemoMode: (demoMode: boolean) => void;
 }
@@ -26,9 +25,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }
 
@@ -36,42 +33,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false); // Demo mode for presentation/testing
-  const [authInitialized, setAuthInitialized] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
 
   const isAuthenticated = !!user;
 
   const hasRole = (role: UserRole | UserRole[]): boolean => {
     if (!profile) return false;
-    
-    if (Array.isArray(role)) {
-      return role.includes(profile.role);
-    }
-    
-    return profile.role === role;
+    return Array.isArray(role) ? role.includes(profile.role) : profile.role === role;
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     if (demoMode) {
-      // Create a fake user for demo mode with proper User type
       const demoUser = {
         id: 'demo-user-id',
         email: 'demo@example.com',
         user_metadata: {
           display_name: 'Demo Business Owner',
-          role: 'business_owner'
+          role: 'business_owner',
         },
         app_metadata: {},
         aud: 'authenticated',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         role: '',
-        confirmed_at: new Date().toISOString()
+        confirmed_at: new Date().toISOString(),
       } as User;
-      
-      setUser(demoUser);
-      
-      // Create a fake profile for demo mode
+
       const demoProfile: UserProfile = {
         id: 'demo-user-id',
         email: 'demo@example.com',
@@ -81,188 +68,147 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         subscription: 'free',
-        verified: true
+        verified: true,
       };
-      
-      setProfile(demoProfile);
-      return demoUser;
-    }
-    
-    const user = await authService.login(email, password);
-    if (user) await loadUserProfile(user.id);
-    return user;
-  };
 
-  const registerBusinessOwner = async (
-    email: string, 
-    password: string, 
-    displayName: string,
-    businessName: string
-  ) => {
-    if (demoMode) {
-      // Create a fake user for demo mode with proper User type
-      const demoUser = {
-        id: 'demo-user-id',
-        email,
-        user_metadata: {
-          display_name: displayName,
-          role: 'business_owner'
-        },
-        app_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        role: '',
-        confirmed_at: new Date().toISOString()
-      } as User;
-      
       setUser(demoUser);
-      
-      // Create a fake profile for demo mode
-      const demoProfile: UserProfile = {
-        id: 'demo-user-id',
-        email,
-        display_name: displayName,
-        business_name: businessName,
-        role: 'business_owner',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        subscription: 'free',
-        verified: false
-      };
-      
       setProfile(demoProfile);
       return demoUser;
     }
-    
-    const user = await authService.registerBusinessOwner(
-      email, 
-      password, 
-      displayName,
-      businessName
-    );
-    if (user) await loadUserProfile(user.id);
-    return user;
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      console.error('Login error:', error);
+      return null;
+    }
+
+    setUser(data.user);
+
+    try {
+      const userProfile = await authService.getUserProfile(data.user.id);
+      setProfile(userProfile);
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+
+    return data.user;
   };
 
   const logout = async () => {
-    if (demoMode) {
-      setUser(null);
-      setProfile(null);
-      return;
-    }
-    
-    await authService.logout();
+    await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
   };
 
-  const resetPassword = async (email: string) => {
-    if (demoMode) {
-      console.log('Demo mode: Password reset email would be sent to', email);
-      return;
+  const registerBusinessOwner = async (
+    email: string,
+    password: string,
+    displayName: string,
+    businessName: string
+  ): Promise<User | null> => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error || !data.user) {
+      console.error('Registration error:', error);
+      return null;
     }
-    
-    await authService.resetPassword(email);
+
+    const newProfile: UserProfile = {
+      id: data.user.id,
+      email,
+      display_name: displayName,
+      business_name: businessName,
+      role: 'business_owner',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      subscription: 'free',
+    };
+
+    await authService.createUserProfile(newProfile);
+
+    setUser(data.user);
+    setProfile(newProfile);
+
+    return data.user;
   };
 
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const profile = await authService.getUserProfile(userId);
-      setProfile(profile);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      setProfile(null);
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      throw new Error(error.message);
     }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
-    if (!user) throw new Error('User not authenticated');
-    
-    if (demoMode) {
-      setProfile(prev => prev ? { ...prev, ...data, updated_at: new Date().toISOString() } : null);
-      return;
-    }
-    
+    if (!user) return;
+    // First update the profile
     await authService.updateUserProfile(user.id, data);
-    await refreshProfile();
+    // Then fetch the updated profile
+    const updatedProfile = await authService.getUserProfile(user.id);
+    setProfile(updatedProfile);
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await loadUserProfile(user.id);
-    }
+    if (!user) return;
+    const freshProfile = await authService.getUserProfile(user.id);
+    setProfile(freshProfile);
   };
 
   useEffect(() => {
-    if (demoMode) {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+      if (currentUser) {
+        setUser(currentUser);
+        try {
+          const userProfile = await authService.getUserProfile(currentUser.id);
+          setProfile(userProfile);
+        } catch (err) {
+          console.error('Profile fetch error:', err);
+        }
+      }
       setIsLoading(false);
-      setAuthInitialized(true);
-      return;
-    }
-    
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadUserProfile(session.user.id);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setIsLoading(false);
-        setAuthInitialized(true);
-      }
     };
-    
-    initializeAuth();
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadUserProfile(session.user.id);
-        } else {
-          setProfile(null);
+
+    initAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const user = session?.user ?? null;
+      setUser(user);
+      if (user) {
+        try {
+          const userProfile = await authService.getUserProfile(user.id);
+          setProfile(userProfile);
+        } catch (err) {
+          console.error('Profile fetch error (on change):', err);
         }
+      } else {
+        setProfile(null);
       }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [demoMode]);
+    });
 
-  const value = {
-    user,
-    profile,
-    isLoading,
-    isAuthenticated,
-    hasRole,
-    login,
-    registerBusinessOwner,
-    logout,
-    resetPassword,
-    updateProfile,
-    refreshProfile,
-    demoMode,
-    setDemoMode
-  };
-
-  // Render a loading indicator while auth is initializing
-  if (!authInitialized) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="w-12 h-12 border-4 rounded-full border-t-transparent border-red-600 animate-spin"></div>
-      </div>
-    );
-  }
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        isLoading,
+        isAuthenticated,
+        hasRole,
+        login,
+        registerBusinessOwner,
+        logout,
+        resetPassword,
+        updateProfile,
+        refreshProfile,
+        demoMode,
+        setDemoMode,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

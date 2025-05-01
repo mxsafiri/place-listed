@@ -218,7 +218,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_profile_for_user: {
+        Args: {
+          user_id: string
+          user_email: string
+          user_display_name: string
+          user_business_name: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

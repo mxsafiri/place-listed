@@ -80,17 +80,19 @@ export default function RegisterPage() {
     
     try {
       // Use Supabase authentication to register a business owner
-      await registerBusinessOwner(
+      const user = await registerBusinessOwner(
         formData.email, 
         formData.password, 
         formData.displayName,
         formData.businessName
       );
       
-      // Add a small delay to ensure the session is established
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
+      if (!user) {
+        throw new Error('Registration failed');
+      }
+      
+      // Use Next.js router for client-side navigation
+      router.push('/dashboard');
     } catch (error: unknown) {
       console.error('Registration error:', error);
       setErrors({

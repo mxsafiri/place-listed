@@ -1,15 +1,6 @@
-// This file simulates Firebase Cloud Functions for authentication-related operations
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  updateProfile,
-  User,
-  Auth
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+// Supabase authentication API operations
+import { supabase, handleSupabaseError } from '@/lib/supabase';
+import { authService, UserProfile } from '@/lib/auth-service';
 
 // Register a new business owner
 export const registerBusinessOwner = async (
@@ -19,36 +10,12 @@ export const registerBusinessOwner = async (
   businessName: string
 ) => {
   try {
-    // Check if auth is available
-    if (!auth) {
-      throw new Error('Authentication service is not available');
-    }
-    
-    // Create the user account
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    // Update the user's display name
-    await updateProfile(user, { displayName });
-    
-    // Create a user profile document in Firestore
-    if (!db) {
-      throw new Error('Database service is not available');
-    }
-    
-    await setDoc(doc(db, 'users', user.uid), {
-      uid: user.uid,
-      email,
+    return await authService.registerBusinessOwner(
+      email, 
+      password, 
       displayName,
-      businessName,
-      role: 'business_owner',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      subscription: 'free', // Default subscription tier
-      verified: false // Business owners need verification
-    });
-    
-    return user;
+      businessName
+    );
   } catch (error) {
     console.error('Error registering business owner:', error);
     throw error;
@@ -58,13 +25,7 @@ export const registerBusinessOwner = async (
 // Login a user
 export const loginUser = async (email: string, password: string) => {
   try {
-    // Check if auth is available
-    if (!auth) {
-      throw new Error('Authentication service is not available');
-    }
-    
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    return await authService.login(email, password);
   } catch (error) {
     console.error('Error logging in:', error);
     throw error;
@@ -74,13 +35,7 @@ export const loginUser = async (email: string, password: string) => {
 // Logout a user
 export const logoutUser = async () => {
   try {
-    // Check if auth is available
-    if (!auth) {
-      throw new Error('Authentication service is not available');
-    }
-    
-    await signOut(auth);
-    return { success: true };
+    return await authService.logout();
   } catch (error) {
     console.error('Error logging out:', error);
     throw error;
@@ -90,13 +45,7 @@ export const logoutUser = async () => {
 // Reset password
 export const resetPassword = async (email: string) => {
   try {
-    // Check if auth is available
-    if (!auth) {
-      throw new Error('Authentication service is not available');
-    }
-    
-    await sendPasswordResetEmail(auth, email);
-    return { success: true };
+    return await authService.resetPassword(email);
   } catch (error) {
     console.error('Error resetting password:', error);
     throw error;
@@ -106,18 +55,7 @@ export const resetPassword = async (email: string) => {
 // Get user profile
 export const getUserProfile = async (userId: string) => {
   try {
-    // Check if db is available
-    if (!db) {
-      throw new Error('Database service is not available');
-    }
-    
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    
-    if (!userDoc.exists()) {
-      throw new Error('User profile not found');
-    }
-    
-    return userDoc.data();
+    return await authService.getUserProfile(userId);
   } catch (error) {
     console.error('Error getting user profile:', error);
     throw error;
@@ -126,61 +64,68 @@ export const getUserProfile = async (userId: string) => {
 
 // Define interface for user profile data
 export interface UserProfileData {
-  displayName?: string;
-  businessName?: string;
+  display_name?: string;
+  business_name?: string;
   email?: string;
   phone?: string;
   address?: string;
   bio?: string;
   website?: string;
-  socialLinks?: {
+  social_links?: {
     facebook?: string;
     twitter?: string;
     instagram?: string;
     linkedin?: string;
   };
   settings?: {
-    emailNotifications?: boolean;
-    smsNotifications?: boolean;
-    marketingEmails?: boolean;
+    email_notifications?: boolean;
+    sms_notifications?: boolean;
+    marketing_emails?: boolean;
   };
-  [key: string]: any; // For any additional properties
 }
 
 // Update user profile
 export const updateUserProfile = async (userId: string, profileData: UserProfileData) => {
   try {
-    // Check if db is available
-    if (!db) {
-      throw new Error('Database service is not available');
-    }
-    
-    const userRef = doc(db, 'users', userId);
-    
-    // Ensure we're not updating sensitive fields
-    const safeProfileData = {
-      ...profileData,
-      updatedAt: new Date().toISOString(),
-      // Preserve fields that shouldn't be updated directly
-      uid: userId,
-      role: profileData.role || 'business_owner',
-      createdAt: profileData.createdAt,
-      subscription: profileData.subscription || 'free',
-      verified: profileData.verified || false
-    };
-    
-    await updateDoc(userRef, safeProfileData);
-    
-    // If display name is being updated, also update it in Firebase Auth
-    if (profileData.displayName && auth && auth.currentUser) {
-      await updateProfile(auth.currentUser, { 
-        displayName: profileData.displayName 
-      });
-    }
-    
-    return { success: true, ...safeProfileData };
+    return await authService.updateUserProfile(userId, profileData);
   } catch (error) {
     console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+// Get current session
+export const getCurrentSession = async () => {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw handleSupabaseError(error);
+    return data.session;
+  } catch (error) {
+    console.error('Error getting current session:', error);
+    throw error;
+  }
+};
+
+// Get current user
+export const getCurrentUser = async () => {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw handleSupabaseError(error);
+    return data.user;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    throw error;
+  }
+};
+
+// Refresh session
+export const refreshSession = async () => {
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) throw handleSupabaseError(error);
+    return data;
+  } catch (error) {
+    console.error('Error refreshing session:', error);
     throw error;
   }
 };

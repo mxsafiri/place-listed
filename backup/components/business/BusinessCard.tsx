@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card } from '@/frontend/components/ui/Card';
-import { categoryColors } from '@/styles/colors';
+import { categoryColors } from '../../styles/colors';
+import { Card } from '../ui/Card';
 
 export interface BusinessCardProps {
   id: string;
