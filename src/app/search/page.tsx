@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = "force-dynamic";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { BusinessGrid } from '@/frontend/components/business/BusinessGrid';
 import { SearchBar } from '@/frontend/components/common/SearchBar';
@@ -40,7 +40,8 @@ const popularCategories = [
   },
 ];
 
-export default function SearchPage() {
+// Client component that uses useSearchParams
+function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const query = searchParams.get('q') || '';
@@ -102,158 +103,129 @@ export default function SearchPage() {
       
       setResults(filteredResults);
       setLoading(false);
-    }, 500);
+    }, 500); // Simulate network delay
     
     return () => clearTimeout(timer);
   }, [query, category, location]);
   
-  // Handle category click
-  const handleCategoryClick = (categorySlug: string) => {
-    updateSearchParams({ category: categorySlug });
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Get values from form elements
+    const form = e.target as HTMLFormElement;
+    const searchInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    const categorySelect = form.querySelector('select[name="category"]') as HTMLSelectElement;
+    const locationInput = form.querySelector('input[name="location"]') as HTMLInputElement;
+    
+    updateSearchParams({
+      q: searchInput?.value || '',
+      category: categorySelect?.value || '',
+      location: locationInput?.value || ''
+    });
   };
   
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Search Header */}
-      <div className="bg-primary-700 py-6">
-        <div className="container mx-auto px-4">
-          <SearchBar 
-            showCategories={true} 
-            showLocation={true} 
-            variant="default"
-            className="max-w-4xl mx-auto"
-          />
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero section with search */}
+      <div className="bg-red-600 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-extrabold text-white sm:text-4xl">
+              Find the perfect place
+            </h1>
+            <p className="mt-3 max-w-md mx-auto text-white text-opacity-90 sm:text-lg">
+              Discover and explore local businesses in your area
+            </p>
+          </div>
+          
+          <div className="mt-8">
+            <SearchBar 
+              placeholder="Search for businesses, restaurants, hotels..."
+              showCategories={true}
+              showLocation={true}
+            />
+          </div>
         </div>
       </div>
       
-      {/* Search Results */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Search Summary */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {results.length > 0 ? (
-              <>
-                {results.length} {results.length === 1 ? 'result' : 'results'} found
-                {query && <span> for &quot;{query}&quot;</span>}
-                {category && <span> in {category}</span>}
-                {location && <span> near {location}</span>}
-              </>
-            ) : (
-              <>
-                No results found
-                {query && <span> for &quot;{query}&quot;</span>}
-                {category && <span> in {category}</span>}
-                {location && <span> near {location}</span>}
-              </>
+      {/* Main content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Search results */}
+        <div className="mb-12">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {query || category || location ? 'Search Results' : 'Featured Places'}
+            </h2>
+            {(query || category || location) && (
+              <div className="flex space-x-2">
+                {query && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                    {query}
+                    <button 
+                      onClick={() => updateSearchParams({ q: '' })}
+                      className="ml-1 text-red-500 hover:text-red-700"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                )}
+                {category && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    {category}
+                    <button 
+                      onClick={() => updateSearchParams({ category: '' })}
+                      className="ml-1 text-blue-500 hover:text-blue-700"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                )}
+                {location && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    {location}
+                    <button 
+                      onClick={() => updateSearchParams({ location: '' })}
+                      className="ml-1 text-green-500 hover:text-green-700"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                )}
+              </div>
             )}
-          </h1>
+          </div>
           
-          {/* Active Filters */}
-          {(query || category || location) && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {query && (
-                <button
-                  onClick={() => updateSearchParams({ q: '' })}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-red-100 text-red-800 text-sm"
-                >
-                  Search: {query}
-                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {category && (
-                <button
-                  onClick={() => updateSearchParams({ category: '' })}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm"
-                >
-                  Category: {category}
-                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {location && (
-                <button
-                  onClick={() => updateSearchParams({ location: '' })}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-green-100 text-green-800 text-sm"
-                >
-                  Location: {location}
-                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {(query || category || location) && (
-                <button
-                  onClick={() => router.push('/search')}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 text-sm"
-                >
-                  Clear All Filters
-                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+          <BusinessGrid businesses={results} />
+          
+          {results.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900">No results found</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Try adjusting your search criteria or browse categories below
+              </p>
             </div>
           )}
         </div>
         
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar - Categories */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Categories</h2>
-              <ul className="space-y-2">
-                {popularCategories.map((cat) => (
-                  <li key={cat.slug}>
-                    <button
-                      onClick={() => handleCategoryClick(cat.slug)}
-                      className={`flex items-center w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 transition-colors ${
-                        category === cat.slug ? 'bg-red-50 text-red-700' : 'text-gray-700'
-                      }`}
-                    >
-                      <span className="flex-1">{cat.name}</span>
-                      <span className="text-sm text-gray-500">{cat.count}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          
-          {/* Main Content - Results */}
-          <div className="lg:col-span-3">
-            {loading ? (
-              // Loading state
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
-              </div>
-            ) : results.length > 0 ? (
-              // Results
-              <BusinessGrid businesses={results} />
-            ) : (
-              // No results
-              <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No results found</h3>
-                <p className="text-gray-600 mb-6">
-                  We couldn&apos;t find any businesses matching your search criteria.
-                </p>
-                <button
-                  onClick={() => router.push('/search')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            )}
-          </div>
+        {/* Categories section */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            Popular Categories
+          </h2>
+          <CategorySection 
+            title="Browse by Category"
+            categories={popularCategories}
+          />
         </div>
       </div>
-    </main>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
