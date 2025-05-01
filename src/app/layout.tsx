@@ -20,13 +20,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <Navbar />
-          <div className="min-h-screen">
-            {children}
-          </div>
-          <Footer />
-        </AuthProvider>
+        <div suppressHydrationWarning>
+          <AuthProvider>
+            <Navbar />
+            <div className="min-h-screen">
+              {children}
+            </div>
+            <Footer />
+          </AuthProvider>
+        </div>
       </body>
     </html>
   );
