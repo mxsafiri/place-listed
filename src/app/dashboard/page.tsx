@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useRouter } from 'next/navigation';
 import LoadingSpinner from '@/frontend/components/ui/LoadingSpinner';
+import ProfileCompletion from './ProfileCompletion';
 
 // Import Supabase services
 import { getBusinessesByOwner } from '@/backend/api/business';
@@ -149,6 +150,14 @@ export default function DashboardPage() {
           <CardTitle>Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Profile completion prompt if missing info */}
+          {(!profile?.display_name || !profile?.business_name) && (
+            <ProfileCompletion
+              initialDisplayName={profile?.display_name ?? undefined}
+              initialBusinessName={profile?.business_name ?? undefined}
+              onComplete={() => window.location.reload()}
+            />
+          )}
           <div className="mb-4">
             <h2 className="text-xl font-semibold mb-2">Welcome, {profile?.display_name || 'Business Owner'}</h2>
             <p>Email: {user?.email}</p>

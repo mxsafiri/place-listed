@@ -86,9 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const userProfile = await authService.getUserProfile(data.user.id);
-      setProfile(userProfile);
+      setProfile(userProfile || null); // If not found, set to null
     } catch (err) {
+      // Instead of blocking, log and allow dashboard access
       console.error('Error fetching profile:', err);
+      setProfile(null);
     }
 
     return data.user;
