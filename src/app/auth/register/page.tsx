@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { Button } from '@/frontend/components/ui/Button';
 import { Input } from '@/frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/Card';
-import { ConnectWallet, useAddress, useUser } from "@thirdweb-dev/react";
+import { ConnectWallet, useAddress, useUser, embeddedWallet } from "@thirdweb-dev/react";
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -182,10 +182,35 @@ export default function RegisterPage() {
                     btnTitle="Sign In"
                     modalSize="wide"
                     className="w-full"
+                    supportedWallets={[
+                      embeddedWallet({
+                        auth: {
+                          options: ["email", "google", "apple", "facebook"],
+                        },
+                      }),
+                    ]}
                     modalTitleIconUrl=""
                     welcomeScreen={{
                       title: "Sign up for PlaceListed",
                       subtitle: "Connect with your email or wallet",
+                    }}
+                    termsOfServiceUrl="/"
+                    privacyPolicyUrl="/"
+                    displayEmail={{
+                      configuration: {
+                        hideVerifyPrompt: false,
+                        hideThirdwebBranding: false,
+                        emailOptInCode: true,
+                      },
+                    }}
+                    auth={{
+                      loginOptional: false,
+                      onLogin: () => {
+                        console.log("User logged in");
+                      },
+                      loginWithEmail: {
+                        name: "Continue with Email",
+                      },
                     }}
                   />
                 </div>

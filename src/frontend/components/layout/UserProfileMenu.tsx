@@ -59,6 +59,30 @@ export default function UserProfileMenu() {
             title: "Sign in to PlaceListed",
             subtitle: "Connect with your email or wallet",
           }}
+          // Customize the "New to wallets?" link behavior
+          termsOfServiceUrl="/"
+          privacyPolicyUrl="/"
+          // Display email wallet creation directly instead of redirecting
+          displayEmail={{
+            configuration: {
+              hideVerifyPrompt: false,
+              hideThirdwebBranding: false,
+              emailOptInCode: true,
+            },
+          }}
+          // Show email as the first option
+          modalTitleIconUrl=""
+          auth={{
+            loginOptional: false,
+            onLogin: () => {
+              console.log("User logged in");
+              // Redirect to dashboard after login
+              router.push('/dashboard');
+            },
+            loginWithEmail: {
+              name: "Continue with Email",
+            },
+          }}
         />
       </div>
     );

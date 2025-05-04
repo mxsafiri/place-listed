@@ -7,7 +7,7 @@ import { SearchBar } from "@/frontend/components/common/SearchBar";
 import { BusinessGrid } from "@/frontend/components/business/BusinessGrid";
 import { CategorySection } from "@/frontend/components/common/CategorySection";
 import { BusinessCard } from "@/frontend/components/business/BusinessCard";
-import { ConnectWallet, useAddress } from "@thirdweb-dev/react";
+import { ConnectWallet, useAddress, embeddedWallet } from "@thirdweb-dev/react";
 import { useRouter } from "next/navigation";
 
 // Mock data for categories
@@ -272,10 +272,36 @@ export default function Home() {
                           btnTitle="Sign In"
                           modalSize="wide"
                           className="w-full"
+                          supportedWallets={[
+                            embeddedWallet({
+                              auth: {
+                                options: ["email", "google", "apple", "facebook"],
+                              },
+                            }),
+                          ]}
                           modalTitleIconUrl=""
                           welcomeScreen={{
                             title: "Sign in to PlaceListed",
                             subtitle: "Connect with your email or wallet",
+                          }}
+                          termsOfServiceUrl="/"
+                          privacyPolicyUrl="/"
+                          displayEmail={{
+                            configuration: {
+                              hideVerifyPrompt: false,
+                              hideThirdwebBranding: false,
+                              emailOptInCode: true,
+                            },
+                          }}
+                          auth={{
+                            loginOptional: false,
+                            onLogin: () => {
+                              console.log("User logged in");
+                              router.push('/dashboard');
+                            },
+                            loginWithEmail: {
+                              name: "Continue with Email",
+                            },
                           }}
                           onConnect={handleWalletConnected}
                         />
