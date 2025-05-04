@@ -7,44 +7,75 @@ import { z } from 'zod';
 import { Button } from '@/frontend/components/ui/Button';
 import { Input } from '@/frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/Card';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { ConnectWallet, useAddress, useUser } from "@thirdweb-dev/react";
+import { supabase } from '@/lib/supabase';
 
 /**
- * Zod schema for business owner registration form validation.
+ * Zod schema for business owner registration form validation after wallet connection.
  */
-const RegisterSchema = z.object({
+const ProfileSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
   displayName: z.string().min(1, 'Your name is required'),
-  email: z.string().email('Email is invalid'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
 });
 
 /**
- * Business owner registration page. Handles registration and email verification flow.
+ * Business owner registration page using thirdweb wallet authentication.
  */
 export default function RegisterPage() {
   const router = useRouter();
-  const { user, signUp } = useAuth();
+  const address = useAddress();
+  const { isLoggedIn, isLoading } = useUser();
+  
   const [formData, setFormData] = useState({
     businessName: '',
     displayName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
 
-  // Redirect authenticated users to dashboard
+  // Check if wallet is connected
   useEffect(() => {
-    if (user) router.replace('/dashboard');
-  }, [user, router]);
+    if (address) {
+      setWalletConnected(true);
+      
+      // Set a display name derived from the wallet address
+      setFormData(prev => ({
+        ...prev,
+        displayName: `Owner ${address.slice(0, 6)}...${address.slice(-4)}`
+      }));
+    } else {
+      setWalletConnected(false);
+    }
+  }, [address]);
+
+  // Redirect to dashboard if already registered
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      if (!address) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('wallet_users')
+          .select('*')
+          .eq('wallet_address', address.toLowerCase())
+          .maybeSingle();
+          
+        if (data && !error) {
+          // User already exists, redirect to dashboard
+          localStorage.setItem('placeListed_wallet', address.toLowerCase());
+          localStorage.setItem('placeListed_wallet_authenticated', 'true');
+          router.replace('/dashboard');
+        }
+      } catch (error) {
+        console.error('Error checking existing user:', error);
+      }
+    };
+    
+    checkExistingUser();
+  }, [address, router]);
 
   /**
    * Handles input change and clears field errors.
@@ -57,15 +88,21 @@ export default function RegisterPage() {
   };
 
   /**
-   * Handles form submission, validates input, and registers user with Supabase.
+   * Handles form submission, creates a wallet_user record after wallet connection.
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!address) {
+      setFormError('Please connect your wallet first');
+      return;
+    }
+    
     setFormError(null);
     setFormSuccess(null);
     setFieldErrors({});
 
-    const result = RegisterSchema.safeParse(formData);
+    const result = ProfileSchema.safeParse(formData);
     if (!result.success) {
       const errors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -75,26 +112,39 @@ export default function RegisterPage() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      // Register user using Supabase Auth
-      const { error } = await signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            display_name: formData.displayName,
-            business_name: formData.businessName,
-          },
-        },
-      });
+      // Create a new wallet_user record 
+      const { data, error } = await supabase
+        .from('wallet_users')
+        .insert({
+          wallet_address: address.toLowerCase(),
+          display_name: formData.displayName,
+          business_name: formData.businessName,
+          role: 'business_owner',
+          verified: true
+        })
+        .select()
+        .single();
+        
       if (error) throw error;
-      setFormSuccess('Registration successful! Please check your email to verify your account.');
-      setFormData({ businessName: '', displayName: '', email: '', password: '', confirmPassword: '' });
+      
+      // Set wallet auth in localStorage
+      localStorage.setItem('placeListed_wallet', address.toLowerCase());
+      localStorage.setItem('placeListed_wallet_authenticated', 'true');
+      
+      setFormSuccess('Registration successful! Redirecting to dashboard...');
+      
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+      
     } catch (err: any) {
+      console.error('Registration error:', err);
       setFormError(err?.message || 'Registration failed. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -105,7 +155,7 @@ export default function RegisterPage() {
           Register as a Business Owner
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Create an account to manage your business listing
+          Sign in with email or connect your wallet to manage your business listing
         </p>
       </div>
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -120,68 +170,71 @@ export default function RegisterPage() {
             {formSuccess && (
               <div className="mb-4 p-3 bg-green-50 text-green-600 text-sm rounded-md">{formSuccess}</div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="Business Name"
-                id="businessName"
-                name="businessName"
-                type="text"
-                autoComplete="organization"
-                required
-                value={formData.businessName}
-                onChange={handleChange}
-                error={fieldErrors.businessName}
-              />
-              <Input
-                label="Your Name"
-                id="displayName"
-                name="displayName"
-                type="text"
-                autoComplete="name"
-                required
-                value={formData.displayName}
-                onChange={handleChange}
-                error={fieldErrors.displayName}
-              />
-              <Input
-                label="Email Address"
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                error={fieldErrors.email}
-              />
-              <Input
-                label="Password"
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                error={fieldErrors.password}
-              />
-              <Input
-                label="Confirm Password"
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                error={fieldErrors.confirmPassword}
-              />
-              <div className="mt-6">
-                <Button type="submit" className="w-full" loading={isLoading} disabled={isLoading}>
-                  Create Account
-                </Button>
+            
+            {!walletConnected ? (
+              <div className="space-y-6">
+                <p className="text-center text-sm text-gray-600 mb-4">
+                  First, sign in with your email or connect your wallet to continue registration
+                </p>
+                <div className="flex justify-center">
+                  <ConnectWallet 
+                    theme="light"
+                    btnTitle="Sign In"
+                    modalSize="wide"
+                    className="w-full"
+                    modalTitleIconUrl=""
+                    welcomeScreen={{
+                      title: "Sign up for PlaceListed",
+                      subtitle: "Connect with your email or wallet",
+                    }}
+                  />
+                </div>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="p-3 bg-gray-50 rounded-md mb-4">
+                  <p className="text-sm text-gray-700">
+                    Connected with: <span className="font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                  </p>
+                </div>
+                
+                <Input
+                  label="Business Name"
+                  id="businessName"
+                  name="businessName"
+                  type="text"
+                  autoComplete="organization"
+                  required
+                  value={formData.businessName}
+                  onChange={handleChange}
+                  error={fieldErrors.businessName}
+                />
+                
+                <Input
+                  label="Your Name"
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={formData.displayName}
+                  onChange={handleChange}
+                  error={fieldErrors.displayName}
+                />
+                
+                <div className="mt-6">
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    loading={isSubmitting} 
+                    disabled={isSubmitting}
+                  >
+                    Complete Registration
+                  </Button>
+                </div>
+              </form>
+            )}
+            
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -192,7 +245,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="mt-6 text-center">
-                <Link href="/auth/login" className="font-medium text-red-600 hover:text-red-500">
+                <Link href="/" className="font-medium text-red-600 hover:text-red-500">
                   Sign in
                 </Link>
               </div>

@@ -1,9 +1,14 @@
+'use client';
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { SearchBar } from "@/frontend/components/common/SearchBar";
 import { BusinessGrid } from "@/frontend/components/business/BusinessGrid";
 import { CategorySection } from "@/frontend/components/common/CategorySection";
 import { BusinessCard } from "@/frontend/components/business/BusinessCard";
+import { ConnectWallet, useAddress } from "@thirdweb-dev/react";
+import { useRouter } from "next/navigation";
 
 // Mock data for categories
 const popularCategories = [
@@ -135,6 +140,7 @@ const uniquePlaces = [
   }
 ];
 
+// Function to get a gradient based on the category slug
 function getGradientForCategory(slug: string) {
   switch (slug) {
     case 'food':
@@ -151,6 +157,17 @@ function getGradientForCategory(slug: string) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const address = useAddress();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Redirect to dashboard if wallet is connected
+  const handleWalletConnected = () => {
+    if (address) {
+      router.push('/dashboard');
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
@@ -203,6 +220,82 @@ export default function Home() {
                     </button>
                   </form>
                 </div>
+                
+                {/* Auth/Create Listing Button */}
+                <div className="flex justify-center mb-10 animate-slide-up">
+                  {address ? (
+                    <button
+                      onClick={() => router.push('/dashboard')}
+                      className="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 flex items-center"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      Go to My Dashboard
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 flex items-center"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      List Your Business
+                    </button>
+                  )}
+                </div>
+                
+                {/* Authentication Modal */}
+                {showAuthModal && (
+                  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-2xl">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-2xl font-bold text-gray-900">Sign In</h3>
+                        <button 
+                          onClick={() => setShowAuthModal(false)}
+                          className="text-gray-400 hover:text-gray-500"
+                        >
+                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <p className="mb-6 text-gray-600">
+                        Sign in with your email or connect your wallet to start listing your business
+                      </p>
+                      
+                      <div className="flex flex-col space-y-4">
+                        <ConnectWallet 
+                          theme="light"
+                          btnTitle="Sign In"
+                          modalSize="wide"
+                          className="w-full"
+                          modalTitleIconUrl=""
+                          welcomeScreen={{
+                            title: "Sign in to PlaceListed",
+                            subtitle: "Connect with your email or wallet",
+                          }}
+                          onConnect={handleWalletConnected}
+                        />
+                        
+                        <div className="flex items-center my-4">
+                          <div className="flex-grow border-t border-gray-300"></div>
+                          <span className="px-3 text-gray-500 text-sm">OR</span>
+                          <div className="flex-grow border-t border-gray-300"></div>
+                        </div>
+                        
+                        <Link
+                          href="/auth/register"
+                          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg text-center"
+                        >
+                          Create New Account
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Prompt Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-slide-up">
@@ -388,15 +481,15 @@ export default function Home() {
           </div>
           
           <div className="text-center mt-12 animate-slide-up" style={{animationDelay: '0.7s'}}>
-            <Link 
-              href="/business/register" 
+            <button 
+              onClick={() => setShowAuthModal(true)}
               className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-all duration-300 transform hover:scale-105 shadow-md"
             >
               Get Started Today
               <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
-            </Link>
+            </button>
           </div>
         </div>
       </section>

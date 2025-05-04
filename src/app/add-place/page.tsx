@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/frontend/components/ui/Input';
 import { Button } from '@/frontend/components/ui/Button';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAddress, useUser } from "@thirdweb-dev/react";
 import { createPlace, uploadPlaceImage, PlaceData } from '@/backend/api/places';
+import { supabase } from '@/lib/supabase';
 
 // Define the business categories
 const businessCategories = [
@@ -33,7 +34,10 @@ const STEPS = {
 
 export default function AddPlacePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const address = useAddress();
+  const { isLoggedIn, isLoading: isUserLoading } = useUser();
+  const [walletUser, setWalletUser] = useState<any>(null);
+  
   const [step, setStep] = useState(STEPS.BUSINESS_INFO);
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -79,12 +83,40 @@ export default function AddPlacePage() {
     logoFile: null as File | null,
   });
   
-  // Redirect if not logged in
+  // Fetch wallet user data when address changes
   useEffect(() => {
-    if (!user && !loading) {
+    const fetchWalletUser = async () => {
+      if (!address) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('wallet_users')
+          .select('*')
+          .eq('wallet_address', address.toLowerCase())
+          .single();
+
+        if (error) {
+          console.error('Error fetching wallet user:', error);
+        } else {
+          setWalletUser(data);
+        }
+      } catch (error) {
+        console.error('Error in wallet user fetch:', error);
+      }
+    };
+
+    fetchWalletUser();
+  }, [address]);
+  
+  // Redirect if not authenticated with wallet
+  useEffect(() => {
+    // Check for wallet authentication
+    const isWalletAuthenticated = localStorage.getItem('placeListed_wallet_authenticated') === 'true';
+    
+    if (!isUserLoading && !address && !isWalletAuthenticated) {
       router.push('/auth/login?redirect=/add-place');
     }
-  }, [user, router, loading]);
+  }, [address, router, isUserLoading]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -141,8 +173,8 @@ export default function AddPlacePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
-      alert('You must be logged in to add a business');
+    if (!address) {
+      alert('You must connect your wallet to add a business');
       router.push('/auth/login?redirect=/add-place');
       return;
     }
@@ -186,7 +218,7 @@ export default function AddPlacePage() {
       // Upload photos to Supabase Storage if there are any
       if (formData.photos && formData.photos.length > 0) {
         const uploadedPhotoUrls = await Promise.all(
-          formData.photos.map(photo => uploadPlaceImage(photo, user.id))
+          formData.photos.map(photo => uploadPlaceImage(photo, address))
         );
         
         placeData.photos = {
@@ -196,20 +228,20 @@ export default function AddPlacePage() {
       
       // Upload logo if available
       if (formData.logoFile) {
-        const logoUrl = await uploadPlaceImage(formData.logoFile, user.id);
+        const logoUrl = await uploadPlaceImage(formData.logoFile, address);
         placeData.photos = {
           ...placeData.photos,
           logo: logoUrl
         };
       }
       
-      // Create a new place in Supabase
-      const placeId = await createPlace(placeData, user.id);
+      // Use the wallet address as the owner ID
+      const result = await createPlace(placeData, address);
       
-      // Redirect to success page or dashboard
-      router.push(`/dashboard?business=${placeId}`);
+      // Navigate to the success page or new business page
+      router.push(`/business/${result.id}`);
     } catch (error) {
-      console.error('Error submitting business:', error);
+      console.error('Error creating place:', error);
       alert('There was an error adding your business. Please try again.');
     } finally {
       setLoading(false);

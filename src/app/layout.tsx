@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/frontend/components/layout/Navbar";
 import Footer from "@/frontend/components/layout/Footer";
 import { AuthProvider } from "@/contexts/SupabaseAuthContext";
+import { AppProviders } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,13 +22,15 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div suppressHydrationWarning>
-          <AuthProvider>
-            <Navbar />
-            <div className="min-h-screen">
-              {children}
-            </div>
-            <Footer />
-          </AuthProvider>
+          <AppProviders>
+            <AuthProvider>
+              <Navbar />
+              <div className="min-h-screen">
+                {children}
+              </div>
+              <Footer />
+            </AuthProvider>
+          </AppProviders>
         </div>
       </body>
     </html>

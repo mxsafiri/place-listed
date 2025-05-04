@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from './database.types';
+import type { Database } from '../types/supabase';
 
 // Use environment variables with fallback for client-side
 // This is safe since the anon key is meant to be public

@@ -68,12 +68,19 @@ export interface PlaceWithOwner extends PlaceData {
   updated_at?: string;
 }
 
-// Upload an image to Supabase Storage and get the URL
-export const uploadPlaceImage = async (file: File, userId: string): Promise<string> => {
+/**
+ * Upload an image to Supabase Storage and get the URL
+ * @param file - The file to upload
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with the public URL of the uploaded file
+ */
+export const uploadPlaceImage = async (file: File, walletAddress: string): Promise<string> => {
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+    // Use the wallet address (lowercase) in the storage path
+    const walletDir = walletAddress.toLowerCase();
+    const filePath = `${walletDir}/${fileName}`;
     
     const { error: uploadError, data } = await supabase.storage
       .from('business-images')
@@ -102,14 +109,21 @@ const generateSlug = (name: string): string => {
     .trim();
 };
 
-// Create a new place
-export const createPlace = async (placeData: PlaceData, userId: string): Promise<string> => {
+/**
+ * Create a new place in the database
+ * @param placeData - The place data to create
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with the created place data
+ */
+export const createPlace = async (placeData: PlaceData, walletAddress: string): Promise<any> => {
   try {
     const slug = generateSlug(placeData.name);
+    // Use the wallet address (lowercase) as the owner_id
+    const ownerId = walletAddress.toLowerCase();
     
     const placeWithOwner: PlaceWithOwner = {
       ...placeData,
-      owner_id: userId,
+      owner_id: ownerId,
       status: 'pending', // Places need approval before being public
       slug,
       views: 0,
@@ -125,20 +139,27 @@ export const createPlace = async (placeData: PlaceData, userId: string): Promise
       .single();
       
     if (error) throw handleSupabaseError(error);
-    return data.id;
+    return data;
   } catch (error) {
     console.error('Error creating place:', error);
     throw error;
   }
 };
 
-// Get places owned by a specific user
-export const getPlacesByOwner = async (userId: string): Promise<PlaceWithOwner[]> => {
+/**
+ * Get places owned by a specific wallet user
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with an array of place data
+ */
+export const getPlacesByOwner = async (walletAddress: string): Promise<PlaceWithOwner[]> => {
   try {
+    // Use the wallet address (lowercase) for the query
+    const ownerId = walletAddress.toLowerCase();
+    
     const { data, error } = await supabase
       .from('businesses')
       .select('*')
-      .eq('owner_id', userId)
+      .eq('owner_id', ownerId)
       .order('created_at', { ascending: false });
       
     if (error) throw handleSupabaseError(error);
@@ -149,9 +170,18 @@ export const getPlacesByOwner = async (userId: string): Promise<PlaceWithOwner[]
   }
 };
 
-// Update an existing place
-export const updatePlace = async (placeId: string, placeData: PlaceData, userId: string): Promise<PlaceWithOwner> => {
+/**
+ * Update an existing place
+ * @param placeId - The ID of the place to update
+ * @param placeData - The updated place data
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with the updated place data
+ */
+export const updatePlace = async (placeId: string, placeData: PlaceData, walletAddress: string): Promise<PlaceWithOwner> => {
   try {
+    // Use the wallet address (lowercase) for owner verification
+    const ownerId = walletAddress.toLowerCase();
+    
     // First verify ownership
     const { data: place, error: fetchError } = await supabase
       .from('businesses')
@@ -165,7 +195,7 @@ export const updatePlace = async (placeId: string, placeData: PlaceData, userId:
       throw new Error('Place not found');
     }
     
-    if (place.owner_id !== userId) {
+    if (place.owner_id !== ownerId) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
@@ -190,9 +220,17 @@ export const updatePlace = async (placeId: string, placeData: PlaceData, userId:
   }
 };
 
-// Delete a place
-export const deletePlace = async (placeId: string, userId: string): Promise<{ success: boolean, id: string }> => {
+/**
+ * Delete a place
+ * @param placeId - The ID of the place to delete
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with success status and ID
+ */
+export const deletePlace = async (placeId: string, walletAddress: string): Promise<{ success: boolean, id: string }> => {
   try {
+    // Use the wallet address (lowercase) for owner verification
+    const ownerId = walletAddress.toLowerCase();
+    
     // First verify ownership
     const { data: place, error: fetchError } = await supabase
       .from('businesses')
@@ -206,7 +244,7 @@ export const deletePlace = async (placeId: string, userId: string): Promise<{ su
       throw new Error('Place not found');
     }
     
-    if (place.owner_id !== userId) {
+    if (place.owner_id !== ownerId) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
@@ -217,6 +255,7 @@ export const deletePlace = async (placeId: string, userId: string): Promise<{ su
       .eq('id', placeId);
       
     if (error) throw handleSupabaseError(error);
+    
     return { success: true, id: placeId };
   } catch (error) {
     console.error('Error deleting place:', error);
@@ -224,8 +263,13 @@ export const deletePlace = async (placeId: string, userId: string): Promise<{ su
   }
 };
 
-// Get place analytics
-export const getPlaceAnalytics = async (placeId: string, userId: string): Promise<{
+/**
+ * Get place analytics
+ * @param placeId - The ID of the place to get analytics for
+ * @param walletAddress - The wallet address of the authenticated user
+ * @returns Promise with analytics data
+ */
+export const getPlaceAnalytics = async (placeId: string, walletAddress: string): Promise<{
   views: {
     total: number,
     weekly: number,
@@ -265,7 +309,7 @@ export const getPlaceAnalytics = async (placeId: string, userId: string): Promis
       throw new Error('Place not found');
     }
     
-    if (place.owner_id !== userId) {
+    if (place.owner_id !== walletAddress.toLowerCase()) {
       throw new Error('Unauthorized: You do not own this place');
     }
     
