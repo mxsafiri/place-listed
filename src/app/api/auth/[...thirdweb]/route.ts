@@ -26,7 +26,23 @@ const thirdwebAuth = createAuth({
 // Handle GET requests (for login payload generation)
 export async function GET(request: NextRequest) {
   try {
-    const payload = await thirdwebAuth.generatePayload();
+    // Extract the address from the URL if available
+    const { searchParams } = new URL(request.url);
+    const address = searchParams.get('address');
+    
+    // Generate payload with the required login request parameter
+    const payload = await thirdwebAuth.generatePayload({
+      address: address || "",
+      chainId: 1, // Default to Ethereum mainnet (as a number)
+      statement: "Sign in to PlaceListed",
+      uri: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      version: "1",
+      nonce: undefined, // Let the SDK generate a nonce
+      expirationTime: undefined, // Use default expiration
+      resources: undefined, // No specific resources to request
+      timeout: 60 * 60, // 1 hour timeout
+    });
+    
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Error generating auth payload:", error);
